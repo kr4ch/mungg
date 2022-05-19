@@ -1,7 +1,9 @@
 import mysql.connector
 import json
 import re
-from flask import Flask, request, render_template, url_for, redirect
+from flask import Flask, request, render_template, url_for, redirect, jsonify, send_file
+import pandas as pd
+from io import BytesIO
 
 app = Flask(__name__)
 
@@ -22,6 +24,18 @@ def checkTableExists(dbcon, tablename):
 
     dbcur.close()
     return False
+
+def test_parcel_id_valid(parcel_id):
+  print(f'DBG: testing {parcel_id} for validity')
+  # Test if we got an empty string for parcel_id
+  if parcel_id == '' or parcel_id == 'None':
+    return f'ERROR: Invalid parcel_id {parcel_id}'
+
+  # Test if we got the correct format like "99.01.234567.89012345"
+  matched = re.match("99\.[0-9]{2}\.[0-9]{6}\.[0-9]{8}", parcel_id)
+  is_match = bool(matched)
+  if not is_match:
+    return f'ERROR: Invalid parcel_id {parcel_id}. Expected "99.01.234567.89012345"'
 
 ###############################################################################
 # Routes
@@ -91,16 +105,19 @@ def db_init():
   )
   cursor = mydb.cursor()
 
-  create_table = "CREATE TABLE parcels  (parcel_id VARCHAR(255), " \
-                                        "first_name VARCHAR(255), " \
-                                        "last_name VARCHAR(255), " \
-                                        "einheit_id VARCHAR(255), "  \
-                                        "shelf_proposed SMALLINT UNSIGNED," \
-                                        "shelf_selected SMALLINT UNSIGNED, " \
-                                        "width_cm TINYINT UNSIGNED, " \
-                                        "length_cm TINYINT UNSIGNED, " \
-                                        "height_cm TINYINT UNSIGNED, " \
-                                        "weight_g SMALLINT UNSIGNED)"
+  create_table = """
+    CREATE TABLE parcels
+      (parcel_id VARCHAR(255),
+       first_name VARCHAR(255),
+       last_name VARCHAR(255),
+       einheit_id VARCHAR(255),
+       shelf_proposed SMALLINT UNSIGNED,
+       shelf_selected SMALLINT UNSIGNED,
+       width_cm TINYINT UNSIGNED,
+       length_cm TINYINT UNSIGNED,
+       height_cm TINYINT UNSIGNED,
+       weight_g SMALLINT UNSIGNED)
+  """
   print(create_table)
 
   cursor.execute("DROP TABLE IF EXISTS parcels")
@@ -130,15 +147,8 @@ def new_parcel_post():
   height_cm       = request.form.get('height_cm')       or '3'
   weight_g        = request.form.get('weight_g')        or '500'
 
-  # Test if we got an empty string for parcel_id
-  if parcel_id == '' or parcel_id == 'None':
-    return f'ERROR: Invalid parcel_id {parcel_id}'
-
-  # Test if we got the correct format like "99.01.234567.89012345"
-  matched = re.match("99\.[0-9]{2}\.[0-9]{6}\.[0-9]{8}", parcel_id)
-  is_match = bool(matched)
-  if not is_match:
-    return f'ERROR: Invalid parcel_id {parcel_id}. Expected "99.01.234567.89012345"'
+  ret = test_parcel_id_valid(parcel_id)
+  if ret: return ret
 
   mydb = mysql.connector.connect(
     host="mysqldb",
@@ -306,6 +316,134 @@ def edit_parcel_post(parcel_id, first_name, last_name, einheit_id, shelf_propose
   
   cursor.close()
   return f'SUCCESS! Edited: {record}<br><br><a href="/">Home</a>'
+
+#############################################
+# Upload / Download / Export Functionality
+#############################################
+
+def import_parcels_to_db(parcel_dict):
+  # We need all columns in the Excel sheet to be able to process it. Check and abort if not all are available
+  required_keys = [False,False,False,False,False,False,False,False]
+  for key in parcel_dict:
+    if key   == 'parcel_id':  required_keys[0] = True
+    elif key == 'first_name': required_keys[1] = True
+    elif key == 'last_name':  required_keys[2] = True
+    elif key == 'einheit_id': required_keys[3] = True
+    elif key == 'width_cm':   required_keys[4] = True
+    elif key == 'length_cm':  required_keys[5] = True
+    elif key == 'height_cm':  required_keys[6] = True
+    elif key == 'weight_g':   required_keys[7] = True
+    else: print(f"WARNING: Unknown column in table: {key}")
+  
+  if not all(required_keys):
+    return "<h1>ERROR: Missing column in Excel sheet!<h1>"
+
+  print(parcel_dict)
+
+  parcel_count = len(parcel_dict['parcel_id'])
+
+  for i in range(parcel_count):
+    parcel_id  = str(parcel_dict['parcel_id'][i])
+    first_name = str(parcel_dict['first_name'][i])
+    last_name  = str(parcel_dict['last_name'][i])
+    einheit_id = str(parcel_dict['einheit_id'][i])
+    width_cm   = str(parcel_dict['width_cm'][i])
+    length_cm  = str(parcel_dict['length_cm'][i])
+    height_cm  = str(parcel_dict['height_cm'][i])
+    weight_g   = str(parcel_dict['weight_g'][i])
+    
+    # Test if data is valid. Eg. if parcel_id is correct format
+    ret = test_parcel_id_valid(parcel_id)
+    if ret: return ret
+
+    # Test if parcel_id already exists, we dont want any duplicates
+    mydb = mysql.connector.connect(
+      host="mysqldb",
+      user="root",
+      password="secret",
+      database="inventory"
+    )
+    cursor = mydb.cursor()
+
+    if not checkTableExists(mydb, "parcels"):
+        return f'ERROR: table "parcels" does not exist!'
+
+    sql_cmd = f"SELECT * FROM parcels WHERE parcel_id = '{parcel_id}'"
+    print(sql_cmd)
+    cursor.execute(sql_cmd)    
+    row = cursor.fetchone()
+    if row != None:
+      print(f'ERROR: There is already a parcel with id {parcel_id}')
+      continue # skip inserting the parcel into the db
+
+    else:
+      print("No duplicate parcel ids found (this is good!)")
+
+    # Now insert the new parcel into the db
+    # Note: shelf_proposed and shelf_selected are empty after import!
+    sql_cmd =  f'INSERT INTO '\
+                  'parcels '\
+                    '(parcel_id, first_name, last_name, einheit_id, shelf_proposed, shelf_selected, width_cm, length_cm, height_cm, weight_g) '\
+                'VALUES ('\
+                  f'"{parcel_id}", '\
+                  f'"{first_name}", '\
+                  f'"{last_name}", '\
+                  f'"{einheit_id}", '\
+                  f'0, '\
+                  f'0, '\
+                  f'{width_cm}, '\
+                  f'{length_cm}, '\
+                  f'{height_cm}, '\
+                  f'{weight_g})'
+    print(sql_cmd)
+    cursor.execute(sql_cmd)
+    mydb.commit()
+    cursor.close()
+  return
+
+@app.route("/upload", methods=['GET', 'POST'])
+def upload_file():
+    if request.method == 'POST':
+        print(request.files['file'])
+        f = request.files['file']
+        data_xls = pd.read_excel(f)
+        ret = import_parcels_to_db(data_xls.to_dict())
+        if ret: return ret
+        import_excel_html = '<h1>Imported Excel file:<h1>' + data_xls.to_html() + '<br><br><a href="/">Back to start</a>'
+        return import_excel_html
+    return '''
+    <!doctype html>
+    <title>Upload an excel file</title>
+    <h1>Excel file upload (xls, xlsx, xlsm, xlsb, odf, ods or odt)</h1>
+    <form action="" method=post enctype=multipart/form-data>
+    <p><input type=file name=file><input type=submit value=Upload>
+    </form>
+    '''
+
+@app.route("/export", methods=['GET'])
+def export_records():
+  mydb = mysql.connector.connect(
+    host="mysqldb",
+    user="root",
+    password="secret",
+    database="inventory"
+  )
+  df = pd.io.sql.read_sql('SELECT * FROM parcels', mydb)
+  print(df)
+
+  output = BytesIO()
+  writer = pd.ExcelWriter(output, engine='xlsxwriter')
+  df.to_excel(writer, sheet_name='Sheet1')
+  writer.save()
+  output.seek(0)
+  
+  return send_file(output, attachment_filename='bula_post_export.xlsx', as_attachment=True)
+
+
+
+###############################################################################
+# Deprecated
+###############################################################################
 
 # Old test for quickly adding a parcel
 @app.route('/addtest')
