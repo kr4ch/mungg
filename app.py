@@ -5,6 +5,7 @@ import re
 from flask import Flask, request, render_template, url_for, redirect, jsonify, send_file
 import pandas as pd
 from io import BytesIO
+from math import isnan
 
 app = Flask(__name__)
 
@@ -32,11 +33,11 @@ def test_parcel_id_valid(parcel_id):
   if parcel_id == '' or parcel_id == 'None':
     return f'ERROR: Invalid parcel_id {parcel_id}'
 
-  # Test if we got the correct format like "99.01.234567.89012345"
-  matched = re.match("99\.[0-9]{2}\.[0-9]{6}\.[0-9]{8}", parcel_id)
+  # Test if we got the correct format like "990123456789012345"
+  matched = re.match("99[0-9]{16}", parcel_id)
   is_match = bool(matched)
   if not is_match:
-    return f'ERROR: Invalid parcel_id {parcel_id}. Expected "99.01.234567.89012345"'
+    return f'ERROR: Invalid parcel_id {parcel_id}. Expected "990123456789012345"'
 
 def db_select_from_table_where(table, where_col, where_val):
   """
@@ -301,9 +302,9 @@ def db_init():
        einheit_id VARCHAR(255),
        shelf_proposed SMALLINT UNSIGNED,
        shelf_selected SMALLINT UNSIGNED,
-       width_cm TINYINT UNSIGNED,
-       length_cm TINYINT UNSIGNED,
-       height_cm TINYINT UNSIGNED,
+       dim_1 SMALLINT UNSIGNED,
+       dim_2 SMALLINT UNSIGNED,
+       dim_3 SMALLINT UNSIGNED,
        weight_g SMALLINT UNSIGNED)
   """
   print(create_table)
@@ -324,15 +325,15 @@ def new_parcel():
 @app.route('/newparcel', methods=['POST'])
 def new_parcel_post():
   # Variable        gets data from form                 or uses default value if form is empty
-  parcel_id       = request.form.get('parcel_id')       or '99.01.234567.89012345'
+  parcel_id       = request.form.get('parcel_id')       or '990123456789012345'
   first_name      = request.form.get('first_name')      or 'Johnny'
   last_name       = request.form.get('last_name')       or 'DropTables'
   einheit_id      = request.form.get('einheit_id')      or '123ABC'
   shelf_proposed  = request.form.get('shelf_proposed')  or '0'
   shelf_selected  = request.form.get('shelf_selected')  or '0'
-  width_cm        = request.form.get('width_cm')        or '5'
-  length_cm       = request.form.get('length_cm')       or '8'
-  height_cm       = request.form.get('height_cm')       or '3'
+  dim_1           = request.form.get('dim_1')           or '500'
+  dim_2           = request.form.get('dim_2')           or '800'
+  dim_3           = request.form.get('dim_3')           or '300'
   weight_g        = request.form.get('weight_g')        or '500'
 
   ret = test_parcel_id_valid(parcel_id)
@@ -351,7 +352,7 @@ def new_parcel_post():
 
   sql_cmd =  f'INSERT INTO '\
                 'parcels '\
-                  '(parcel_id, first_name, last_name, einheit_id, shelf_proposed, shelf_selected, width_cm, length_cm, height_cm, weight_g) '\
+                  '(parcel_id, first_name, last_name, einheit_id, shelf_proposed, shelf_selected, dim_1, dim_2, dim_3, weight_g) '\
               'VALUES ('\
                 f'"{parcel_id}", '\
                 f'"{first_name}", '\
@@ -359,9 +360,9 @@ def new_parcel_post():
                 f'"{einheit_id}", '\
                 f'{shelf_proposed}, '\
                 f'{shelf_selected}, '\
-                f'{width_cm}, '\
-                f'{length_cm}, '\
-                f'{height_cm}, '\
+                f'{dim_1}, '\
+                f'{dim_2}, '\
+                f'{dim_3}, '\
                 f'{weight_g})'
   print(sql_cmd)
 
@@ -372,7 +373,7 @@ def new_parcel_post():
   cursor.close()
 
   #return f'Added new parcel: parcel_id: {parcel_id} FirstName:{first_name} LastName: {last_name} einheit_id: {einheit_id} shelf_proposed: {shelf_proposed} shelf_selected: {shelf_selected} '\
-  #              f'width_cm: {width_cm} length_cm: {length_cm} height_cm: {height_cm} weight_g: {weight_g}'
+  #              f'dim_1: {dim_1} dim_2: {dim_2} dim_3: {dim_3} weight_g: {weight_g}'
   return redirect(url_for('index'))
 
 
@@ -390,11 +391,11 @@ def search_parcel_post(parcel_id):
   if parcel_id == '' or parcel_id == 'None':
     return f'ERROR: Invalid parcel_id {parcel_id}'
 
-  # Test if we got the correct format like "99.01.234567.89012345"
-  matched = re.match("99\.[0-9]{2}\.[0-9]{6}\.[0-9]{8}", parcel_id)
+  # Test if we got the correct format like "990123456789012345"
+  matched = re.match("99[0-9]{16}", parcel_id)
   is_match = bool(matched)
   if not is_match:
-    return f'ERROR: Invalid parcel_id {parcel_id}. Expected "99.01.234567.89012345"'
+    return f'ERROR: Invalid parcel_id {parcel_id}. Expected "990123456789012345"'
 
   mydb = mysql.connector.connect(
     host="mysqldb",
@@ -430,37 +431,37 @@ def search_parcel_post(parcel_id):
   einheit_id = row[3]
   shelf_proposed = row[4]
   shelf_selected = row[5]
-  width_cm = row[6]
-  length_cm = row[7]
-  height_cm = row[8]
+  dim_1 = row[6]
+  dim_2 = row[7]
+  dim_3 = row[8]
   weight_g = row[9]
 
   cursor.close()
 
   return redirect(url_for('edit_parcel',  parcel_id=f'{parcel_id}', first_name=f'{first_name}', last_name=f'{last_name}', \
                                           einheit_id=f'{einheit_id}', shelf_proposed=f'{shelf_proposed}', shelf_selected=f'{shelf_selected}', \
-                                          width_cm=f'{width_cm}', length_cm=f'{length_cm}', height_cm=f'{height_cm}', weight_g=f'{weight_g}'))
+                                          dim_1=f'{dim_1}', dim_2=f'{dim_2}', dim_3=f'{dim_3}', weight_g=f'{weight_g}'))
 
 
 # Edit a parcel
-@app.route('/edit/<parcel_id>/<first_name>/<last_name>/<einheit_id>/<shelf_proposed>/<shelf_selected>/<width_cm>/<length_cm>/<height_cm>/<weight_g>')
-def edit_parcel(parcel_id, first_name, last_name, einheit_id, shelf_proposed, shelf_selected, width_cm, length_cm, height_cm, weight_g):
+@app.route('/edit/<parcel_id>/<first_name>/<last_name>/<einheit_id>/<shelf_proposed>/<shelf_selected>/<dim_1>/<dim_2>/<dim_3>/<weight_g>')
+def edit_parcel(parcel_id, first_name, last_name, einheit_id, shelf_proposed, shelf_selected, dim_1, dim_2, dim_3, weight_g):
   return render_template('edit.html',  parcel_id=f'{parcel_id}', first_name=f'{first_name}', last_name=f'{last_name}', \
                                           einheit_id=f'{einheit_id}', shelf_proposed=f'{shelf_proposed}', shelf_selected=f'{shelf_selected}', \
-                                          width_cm=f'{width_cm}', length_cm=f'{length_cm}', height_cm=f'{height_cm}', weight_g=f'{weight_g}')
+                                          dim_1=f'{dim_1}', dim_2=f'{dim_2}', dim_3=f'{dim_3}', weight_g=f'{weight_g}')
 
 # Edit a parcel (after clicking SUBMIT)
-@app.route('/edit/<parcel_id>/<first_name>/<last_name>/<einheit_id>/<shelf_proposed>/<shelf_selected>/<width_cm>/<length_cm>/<height_cm>/<weight_g>', methods=['POST'])
-def edit_parcel_post(parcel_id, first_name, last_name, einheit_id, shelf_proposed, shelf_selected, width_cm, length_cm, height_cm, weight_g):
+@app.route('/edit/<parcel_id>/<first_name>/<last_name>/<einheit_id>/<shelf_proposed>/<shelf_selected>/<dim_1>/<dim_2>/<dim_3>/<weight_g>', methods=['POST'])
+def edit_parcel_post(parcel_id, first_name, last_name, einheit_id, shelf_proposed, shelf_selected, dim_1, dim_2, dim_3, weight_g):
   parcel_id = request.form.get('parcel_id')
   first_name = request.form.get('first_name')
   last_name = request.form.get('last_name')
   einheit_id = request.form.get('einheit_id')
   shelf_proposed = request.form.get('shelf_proposed')
   shelf_selected = request.form.get('shelf_selected')
-  width_cm = request.form.get('width_cm')
-  length_cm = request.form.get('length_cm')
-  height_cm = request.form.get('height_cm')
+  dim_1 = request.form.get('dim_1')
+  dim_2 = request.form.get('dim_2')
+  dim_3 = request.form.get('dim_3')
   weight_g = request.form.get('weight_g')
 
   mydb = mysql.connector.connect(
@@ -488,9 +489,9 @@ def edit_parcel_post(parcel_id, first_name, last_name, einheit_id, shelf_propose
                       f'einheit_id = "{einheit_id}", '\
                       f'shelf_proposed = {shelf_proposed}, '\
                       f'shelf_selected = {shelf_selected}, '\
-                      f'width_cm = {width_cm}, '\
-                      f'length_cm = {length_cm}, '\
-                      f'height_cm = {height_cm}, '\
+                      f'dim_1 = {dim_1}, '\
+                      f'dim_2 = {dim_2}, '\
+                      f'dim_3 = {dim_3}, '\
                       f'weight_g = {weight_g} '\
                     f'WHERE parcel_id = "{parcel_id}"'
   print(sql_update_cmd)
@@ -519,14 +520,14 @@ def import_parcels_to_db(parcel_dict):
   # We need all columns in the Excel sheet to be able to process it. Check and abort if not all are available
   required_keys = [False,False,False,False,False,False,False,False]
   for key in parcel_dict:
-    if key   == 'parcel_id':  required_keys[0] = True
-    elif key == 'first_name': required_keys[1] = True
-    elif key == 'last_name':  required_keys[2] = True
-    elif key == 'einheit_id': required_keys[3] = True
-    elif key == 'width_cm':   required_keys[4] = True
-    elif key == 'length_cm':  required_keys[5] = True
-    elif key == 'height_cm':  required_keys[6] = True
-    elif key == 'weight_g':   required_keys[7] = True
+    if key   == 'IC':         required_keys[0] = True # Parcel ID
+    elif key == 'NAME3':      required_keys[1] = True # First Name
+    elif key == 'STRASSE':    required_keys[2] = True # Last Name / Vulgo
+    elif key == 'NAME2':      required_keys[3] = True # Einheit ID
+    elif key == 'DIM_1':      required_keys[4] = True # Dimension 1 in mm
+    elif key == 'DIM_2':      required_keys[5] = True # Dimension 2 in mm
+    elif key == 'DIM_3':      required_keys[6] = True # Dimension 3 in mm
+    elif key == 'GEWICHT':    required_keys[7] = True # Weight in gram
     else: print(f"WARNING: Unknown column in table: {key}")
   
   if not all(required_keys):
@@ -534,17 +535,19 @@ def import_parcels_to_db(parcel_dict):
 
   print(parcel_dict)
 
-  parcel_count = len(parcel_dict['parcel_id'])
+  parcel_count = len(parcel_dict['IC'])
 
   for i in range(parcel_count):
-    parcel_id  = str(parcel_dict['parcel_id'][i])
-    first_name = str(parcel_dict['first_name'][i])
-    last_name  = str(parcel_dict['last_name'][i])
-    einheit_id = str(parcel_dict['einheit_id'][i])
-    width_cm   = str(parcel_dict['width_cm'][i])
-    length_cm  = str(parcel_dict['length_cm'][i])
-    height_cm  = str(parcel_dict['height_cm'][i])
-    weight_g   = str(parcel_dict['weight_g'][i])
+    # If cell is empty, it will give us 'NaN'. Convert it to 0.
+    # TODO: Generate warning if we get a NaN!
+    parcel_id  = str(parcel_dict['IC'][i] if isinstance(parcel_dict['IC'][i], int) else 0)            # Expect int
+    first_name = str(parcel_dict['NAME3'][i])                                                         # Expect string
+    last_name  = str(parcel_dict['STRASSE'][i])                                                       # Expect string
+    einheit_id = str(parcel_dict['NAME2'][i] if isinstance(parcel_dict['NAME2'][i], int) else 0)      # Expect string
+    dim_1      = str(int(parcel_dict['DIM_1'][i]) if not isnan(parcel_dict['DIM_1'][i]) else 0)       # Expect float
+    dim_2      = str(int(parcel_dict['DIM_2'][i]) if not isnan(parcel_dict['DIM_2'][i]) else 0)       # Expect float
+    dim_3      = str(int(parcel_dict['DIM_3'][i]) if not isnan(parcel_dict['DIM_3'][i]) else 0)       # Expect float
+    weight_g   = str(parcel_dict['GEWICHT'][i] if isinstance(parcel_dict['GEWICHT'][i], int) else 0)  # Expect int
     
     # Test if data is valid. Eg. if parcel_id is correct format
     ret = test_parcel_id_valid(parcel_id)
@@ -579,7 +582,7 @@ def import_parcels_to_db(parcel_dict):
     # Note: shelf_proposed and shelf_selected are empty after import!
     sql_cmd =  f'INSERT INTO '\
                   'parcels '\
-                    '(parcel_id, first_name, last_name, einheit_id, shelf_proposed, shelf_selected, width_cm, length_cm, height_cm, weight_g) '\
+                    '(parcel_id, first_name, last_name, einheit_id, shelf_proposed, shelf_selected, dim_1, dim_2, dim_3, weight_g) '\
                 'VALUES ('\
                   f'"{parcel_id}", '\
                   f'"{first_name}", '\
@@ -587,9 +590,9 @@ def import_parcels_to_db(parcel_dict):
                   f'"{einheit_id}", '\
                   f'0, '\
                   f'0, '\
-                  f'{width_cm}, '\
-                  f'{length_cm}, '\
-                  f'{height_cm}, '\
+                  f'{dim_1}, '\
+                  f'{dim_2}, '\
+                  f'{dim_3}, '\
                   f'{weight_g})'
     print(sql_cmd)
     cursor.execute(sql_cmd)
@@ -672,7 +675,7 @@ def add_test():
   if not checkTableExists(mydb, "parcels"):
       return f'ERROR: table "parcels" does not exist!'
 
-  parcel_id = "99.37.115923.22371774"
+  parcel_id = "993711592322371774"
   first_name = "Johnny"
   last_name = "DropTables"
 
