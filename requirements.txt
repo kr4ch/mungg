@@ -4,3 +4,4 @@ pandas
 xlrd
 xlwt
 xlsxwriter
+openpyxl
