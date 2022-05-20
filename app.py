@@ -64,23 +64,21 @@ def db_select_from_table_where(table, where_col, where_val):
   
   results = cursor.fetchall()
 
-  return mydb, cursor, results
+  cursor.close()
+
+  return results
 
 def db_test_if_value_exists_in_column_in_table(table, column, value):
   """
   Select all elements in a table that fit a where column.
   Returns: True if value exists and False if it does not exist
   """
-  mydb, cursor, results = db_select_from_table_where(table, column, value)
+  results = db_select_from_table_where(table, column, value)
 
   if results == []:
     value_exists = False
   else:
     value_exists = True
-
-  cursor.close()
-
-  print(f"DBG: value_exists={value_exists}")
 
   return value_exists
 
@@ -115,6 +113,37 @@ def db_find_max_value_for_column_in_table(table, column):
 
   return max_value
 
+def db_update_column_for_record_where_column_has_value(table, col_set_name, col_set_val, col_where_name, col_where_val):
+  """
+  For one record that where a column has a given name, set another column to a value.
+  Arguments:
+    table:          The table to edit
+    col_set_name:   Name of the column that shall be changed
+    col_set_val:    Value of the column that shall be changed
+    col_where_name: Name of the column to find our record
+    col_where_val:  Value of the column to find our record
+  Returns:
+    Always True
+  """
+  mydb = mysql.connector.connect(
+    host="mysqldb",
+    user="root",
+    password="secret",
+    database="inventory"
+  )
+  cursor = mydb.cursor()
+  sql_update_cmd = f'UPDATE parcels SET '\
+                    f'{col_set_name} = {col_set_val} '\
+                  f'WHERE {col_where_name} = "{col_where_val}"'
+  print(sql_update_cmd)
+  cursor.execute(sql_update_cmd)
+  mydb.commit()
+  cursor.close()
+
+  # TODO: Add check if update worked
+
+  return True
+
 
 ###############################################################################
 # Data Processing
@@ -130,7 +159,7 @@ def assign_shelf_to_new_parcels():
   assigned_shelf     = []
 
   # Find all parcels that have not been assigned to a shelf yet  
-  mydb, cursor, results = db_select_from_table_where('parcels', 'shelf_proposed', '0')
+  results = db_select_from_table_where('parcels', 'shelf_proposed', '0')
 
   for row in results:
     parcel_id_this  = row[0]
@@ -138,7 +167,7 @@ def assign_shelf_to_new_parcels():
 
     # Determine which shelf this parcel should go on
     ## Find if there are other parcels for the same einheit_id
-    mydb_einheit, cursor_einheit, results_einheit = db_select_from_table_where('parcels', 'einheit_id', f'{einheit_id_this}')
+    results_einheit = db_select_from_table_where('parcels', 'einheit_id', f'{einheit_id_this}')
 
     print(f"DBG: results_einheit={results_einheit}")
     
@@ -152,7 +181,6 @@ def assign_shelf_to_new_parcels():
       shelf_proposed = 1
       while (db_test_if_value_exists_in_column_in_table('parcels', 'shelf_proposed', f'{shelf_proposed}')):
         shelf_proposed += 1
-        print(f'WARNING: shelf_proposed not empty ({shelf_proposed}), incrementing')
       print(f'Parcel {parcel_id_this} is the first for einheit {einheit_id_this} and was assigned to shelf {shelf_proposed}')
 
     else:
@@ -167,22 +195,16 @@ def assign_shelf_to_new_parcels():
 
     assert shelf_proposed != 0, f"ERROR: Unable to assign shelf for parcel {parcel_id_this}"
 
-    cursor_einheit.close()
-
     # Update this single record
-    sql_update_cmd = f'UPDATE parcels SET '\
-                        f'shelf_proposed = {shelf_proposed} '\
-                      f'WHERE parcel_id = "{parcel_id_this}"'
-    print(sql_update_cmd)
-    cursor.execute(sql_update_cmd)
-    mydb.commit()
+    ret = db_update_column_for_record_where_column_has_value('parcels', 'shelf_proposed', shelf_proposed, 'parcel_id', parcel_id_this)
+    if not ret:
+      print(f"ERROR: Unable to change shelf_proposed for parcel_id {parcel_id_this}")
 
     assigned_count = assigned_count + 1
     assigned_parcel_id.append(str(parcel_id_this))
     assigned_shelf.append(str(shelf_proposed))
-    
-  cursor.close()
-
+  
+  # Generate overview of which shelfs have been assigned
   return_string = f'Assigned shelf to {assigned_count} parcels:<br><br>'
   for i in range(assigned_count):
     return_string += f'ID: {assigned_parcel_id[i]}: Shelf {assigned_shelf[i]}<br>'
