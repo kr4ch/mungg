@@ -1,3 +1,4 @@
+from cgitb import html
 import mysql.connector
 import json
 import re
@@ -157,6 +158,8 @@ def assign_shelf_to_new_parcels():
   assigned_count     = 0
   assigned_parcel_id = []
   assigned_shelf     = []
+  failed_count       = 0
+  failed_parcel_id   = []
 
   # Find all parcels that have not been assigned to a shelf yet  
   results = db_select_from_table_where('parcels', 'shelf_proposed', '0')
@@ -166,13 +169,26 @@ def assign_shelf_to_new_parcels():
     einheit_id_this = row[3]
 
     # Determine which shelf this parcel should go on
-    ## Find if there are other parcels for the same einheit_id
     results_einheit = db_select_from_table_where('parcels', 'einheit_id', f'{einheit_id_this}')
-
     print(f"DBG: results_einheit={results_einheit}")
+
+    parcel_needs_shelf = True
     
-    if results_einheit[0][0] == str(parcel_id_this) and len(results_einheit) == 1:
-      # This is the only parcel for this einheit_id
+    # Find if there are other parcels for the same einheit_id that have already a shelf_proposed
+    if not(results_einheit[0][0] == str(parcel_id_this) and len(results_einheit) == 1):
+      # There are already parcels for this einheit_id, check them all out
+      for row_einheit in results_einheit:
+        parcel_id_einheit      = row_einheit[0]
+        shelf_proposed_einheit = row_einheit[4]
+        # TODO: Check if there is enough space in this shelf
+
+        if parcel_id_einheit != parcel_id_this and shelf_proposed_einheit != 0 and parcel_needs_shelf:
+            shelf_proposed = row_einheit[4]
+            print(f'Parcel {parcel_id_this} has already parcels for einheit {einheit_id_this} in shelf {shelf_proposed}')
+            parcel_needs_shelf = False
+
+    # This is the only parcel for this einheit_id
+    if parcel_needs_shelf:
       # Put it into the next empty shelf
       # TODO: Determine which shelf fits for this parcel size / weight
 
@@ -183,31 +199,26 @@ def assign_shelf_to_new_parcels():
         shelf_proposed += 1
       print(f'Parcel {parcel_id_this} is the first for einheit {einheit_id_this} and was assigned to shelf {shelf_proposed}')
 
+    if shelf_proposed == 0:
+      print(f"ERROR: Unable to assign shelf to {parcel_id_this}")
+      failed_count += 1
+      failed_parcel_id.append(parcel_id_this)
     else:
-      # There are already parcels for this einheit_id
-      for row_einheit in results_einheit:
-        parcel_id_einheit = row_einheit[0]
-        if parcel_id_einheit != parcel_id_this:
-          shelf_proposed = row_einheit[4]
-          print(f'Copied shelf {shelf_proposed} from existing parcel {parcel_id_einheit}')
-        # TODO: Check if there is enough space in this shelf
-      print(f'Parcel {parcel_id_this} has already parcels for einheit {einheit_id_this} in shelf {shelf_proposed}')
+      # Update this single record
+      ret = db_update_column_for_record_where_column_has_value('parcels', 'shelf_proposed', shelf_proposed, 'parcel_id', parcel_id_this)
+      if not ret:
+        print(f"ERROR: Unable to change shelf_proposed for parcel_id {parcel_id_this}")
 
-    assert shelf_proposed != 0, f"ERROR: Unable to assign shelf for parcel {parcel_id_this}"
-
-    # Update this single record
-    ret = db_update_column_for_record_where_column_has_value('parcels', 'shelf_proposed', shelf_proposed, 'parcel_id', parcel_id_this)
-    if not ret:
-      print(f"ERROR: Unable to change shelf_proposed for parcel_id {parcel_id_this}")
-
-    assigned_count = assigned_count + 1
-    assigned_parcel_id.append(str(parcel_id_this))
-    assigned_shelf.append(str(shelf_proposed))
+      assigned_count = assigned_count + 1
+      assigned_parcel_id.append(str(parcel_id_this))
+      assigned_shelf.append(str(shelf_proposed))
   
   # Generate overview of which shelfs have been assigned
   return_string = f'Assigned shelf to {assigned_count} parcels:<br><br>'
   for i in range(assigned_count):
     return_string += f'ID: {assigned_parcel_id[i]}: Shelf {assigned_shelf[i]}<br>'
+  if failed_count > 0:
+    return_string += f'<br><b>FAILED</b> to assign shelf to {failed_count} parcels:' + '<br>'.join(failed_parcel_id)
   return_string += '<br><br><a href="/">Back to start</a>'
 
   return return_string
@@ -301,7 +312,7 @@ def db_init():
   cursor.execute(create_table)
   cursor.close()
 
-  return 'init database'
+  return 'Re-initialized database<br><br><a href="/">Back to start</a>'
 
 
 # Create new parcel
@@ -499,6 +510,12 @@ def edit_parcel_post(parcel_id, first_name, last_name, einheit_id, shelf_propose
 #############################################
 
 def import_parcels_to_db(parcel_dict):
+  # Keep a list of which parcels where imported into the db and which were skipped
+  parcels_imported_count = 0
+  parcels_imported_list  = []
+  parcels_skipped_count  = 0
+  parcels_skipped_list   = []
+
   # We need all columns in the Excel sheet to be able to process it. Check and abort if not all are available
   required_keys = [False,False,False,False,False,False,False,False]
   for key in parcel_dict:
@@ -551,6 +568,8 @@ def import_parcels_to_db(parcel_dict):
     row = cursor.fetchone()
     if row != None:
       print(f'ERROR: There is already a parcel with id {parcel_id}')
+      parcels_skipped_count += 1
+      parcels_skipped_list.append(str(parcel_id))
       continue # skip inserting the parcel into the db
 
     else:
@@ -576,7 +595,18 @@ def import_parcels_to_db(parcel_dict):
     cursor.execute(sql_cmd)
     mydb.commit()
     cursor.close()
-  return
+
+    parcels_imported_count += 1
+    parcels_imported_list.append(str(parcel_id))
+
+  html_imported_parcels = "<h1>DONE importing parcels from Excel upload</h1><br>"
+  html_imported_parcels += f"TOTAL \t({parcel_count}) parcels found in Excel file<br>"
+  html_imported_parcels += f"SUCCESS \t({parcels_imported_count}) have been imported<br>"
+  html_imported_parcels += f"FAIL \t({parcels_skipped_count}) have been skipped (eg. because of duplicate parcel id)<br><br>"
+  html_imported_parcels += f"List of fails:<br>" + '<br>\t'.join(parcels_skipped_list) + "<br><br>"
+  html_imported_parcels += f"List of successes:<br>" + '<br>\t'.join(parcels_imported_list) + '<br><br><a href="/">Back to start</a>'
+
+  return html_imported_parcels
 
 @app.route("/upload", methods=['GET', 'POST'])
 def upload_file():
