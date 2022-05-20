@@ -17,11 +17,20 @@ Currently contains:
 
 
 # Testing the application online
-* Go to https://labs.play-with-docker.com/
-* Start a session
-* Click "Create new instance"
-* In the command line enter: `docker run -dp 8000:5000 krach/mungg`
-* Click on "Open Port" and enter `8000`
+Click this button to test it with "play-with-docker.com":
+<a href="https://labs.play-with-docker.com/?stack=https://raw.githubusercontent.com/kr4ch/mungg/main/docker-compose.dev.yml"><img src="https://cdn.rawgit.com/play-with-docker/stacks/cff22438/assets/images/button.png" alt="Try in PWD"></a>
+* Click "Start"
+* Wait a few minutes
+* Click "Close" (maybe need to refresh the page)
+* Click on the button "8000" Next to "Open Port"
 * This should open a new tab with the application
 
-alternatively install "Docker Desktop", get this repo `docker pull krach/mungg` and run it locally
+# Testing the application locally
+Install "Docker Desktop" and run it locally:
+```
+docker pull krach/mungg
+git clone git@github.com:kr4ch/mungg.git
+cd mungg
+docker-compose docker-compose.dev.yml up
+```
+* Open "http://localhost:8000" in a browser
