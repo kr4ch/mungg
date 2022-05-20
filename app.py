@@ -257,7 +257,7 @@ def get_parcels():
 #  return json.dumps(json_data)
 
   # Create table in HTML that lists all parcels
-  parcel_table_html = '<h1>Parcel Overview</h1>'
+  parcel_table_html = '<h1>Parcel Overview</h1><br>'
   parcel_table_html += '<table><tr>'+' '.join(['<th>'+str(item)+'</th>' for item in row_headers]) + '</tr><br>'
   for row in results:
     this_parcel_id = row[0]
@@ -516,6 +516,7 @@ def import_parcels_to_db(parcel_dict):
   parcels_imported_list  = []
   parcels_skipped_count  = 0
   parcels_skipped_list   = []
+  parcels_skipped_cause  = []
 
   # We need all columns in the Excel sheet to be able to process it. Check and abort if not all are available
   required_keys = [False,False,False,False,False,False,False,False]
@@ -573,6 +574,7 @@ def import_parcels_to_db(parcel_dict):
       print(f'ERROR: There is already a parcel with id {parcel_id}')
       parcels_skipped_count += 1
       parcels_skipped_list.append(str(parcel_id))
+      parcels_skipped_cause.append("Duplicate Parcel ID")
       continue # skip inserting the parcel into the db
 
     else:
@@ -605,9 +607,10 @@ def import_parcels_to_db(parcel_dict):
   html_imported_parcels = "<h1>DONE importing parcels from Excel upload</h1><br>"
   html_imported_parcels += f"TOTAL \t({parcel_count}) parcels found in Excel file<br>"
   html_imported_parcels += f"SUCCESS \t({parcels_imported_count}) have been imported<br>"
-  html_imported_parcels += f"FAIL \t({parcels_skipped_count}) have been skipped (eg. because of duplicate parcel id)<br><br>"
-  html_imported_parcels += f"List of fails:<br>" + '<br>\t'.join(parcels_skipped_list) + "<br><br>"
-  html_imported_parcels += f"List of successes:<br>" + '<br>\t'.join(parcels_imported_list) + '<br><br><a href="/">Back to start</a>'
+  html_imported_parcels += f"FAIL \t({parcels_skipped_count}) have been skipped (eg. because of duplicate parcel id)<br><br>List of fails:"
+  for i in range(len(parcels_skipped_list)):
+    html_imported_parcels += f'<br>\t{parcels_skipped_list[i]} (Cause: {parcels_skipped_cause[i]})'
+  html_imported_parcels += f"<br><br>List of successes:<br>" + '<br>\t'.join(parcels_imported_list) + '<br><br><a href="/">Back to start</a>'
 
   return html_imported_parcels
 
