@@ -31,6 +31,6 @@ Install "Docker Desktop" and run it locally:
 docker pull krach/mungg
 git clone git@github.com:kr4ch/mungg.git
 cd mungg
-docker-compose docker-compose.dev.yml up
+docker-compose -f docker-compose.test.yml up
 ```
 * Open "http://localhost:8000" in a browser
