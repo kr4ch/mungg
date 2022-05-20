@@ -24,6 +24,7 @@ Click this button to test it with "play-with-docker.com":
 * Click "Close" (if close button does not work, click on the blue banner and hit "Esc")
 * Click on the button "8000" Next to "Open Port"
 * This should open a new tab with the application
+* First click on "RESET DATABASE" to initialize the db
 
 # Testing the application locally
 Install "Docker Desktop" and run it locally:
