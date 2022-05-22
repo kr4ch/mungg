@@ -19,7 +19,7 @@ Currently contains:
 # Testing the application online
 Click this button to test it with "play-with-docker.com":
 <a href="https://labs.play-with-docker.com/?stack=https://raw.githubusercontent.com/kr4ch/mungg/main/docker-compose.test.yml"><img src="https://cdn.rawgit.com/play-with-docker/stacks/cff22438/assets/images/button.png" alt="Try in PWD"></a>
-* Click "Start"
+* Click "Start" (at first use you must "Login" -> "Docker")
 * Wait a few minutes
 * Click "Close" (if close button does not work, click on the blue banner and hit "Esc")
 * Click on the button "8000" Next to "Open Port"
