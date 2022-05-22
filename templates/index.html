@@ -1,13 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+th {
+  text-align: left;
+}
+</style>
+</head>
+<body>
+
+
+
+
 <title>BULA Post Sortier App</title>
 <h1>BULA Post Sortier App</h1>
 <br>
 
-<p style="border:3px; border-style:solid; border-color:#000000; padding: 1em;">
-Total parcels: {{no_parcels_total}}<br>
-Parcels to be assigned: {{no_parcels_tobeassigned}}<br>
-Parcels to be sorted: {{no_parcels_tobesorted}}<br>
-Parcels in shelfs: {{no_parcels_sorted}}
-</p>
+<table>
+<tr><th>Total parcels:              </th><td>{{no_parcels_total}}</td></tr> 
+<tr><td>* ready to be collected:    </td><td>{{no_parcels_sorted}}</td></tr> 
+<tr><th>ToDo</th></tr>
+<tr><td>* to be assigned:           </td><td>{{no_parcels_tobeassigned}}</td></tr> 
+<tr><td>* to be sorted into shelf:  </td><td>{{no_parcels_tobesorted}}</td></tr> 
+</table>
 
 <br><br>
 Interact with parcels:<br>
