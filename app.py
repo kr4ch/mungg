@@ -289,7 +289,10 @@ def export_records():
 
 @app.route('/assign')
 def assign_shelf():
-  return assign_shelf_to_new_parcels()
+  global last_change
+  html_string, summary_string = assign_shelf_to_new_parcels()
+  last_change = summary_string
+  return html_string
 
 # Sort a parcel - search it
 @app.route('/sort_search')

@@ -71,14 +71,18 @@ def assign_shelf_to_new_parcels():
       assigned_shelf.append(str(shelf_proposed))
   
   # Generate overview of which shelfs have been assigned
-  return_string = f'Assigned shelf to {assigned_count} parcels:<br><br>'
+  html_string = f'Assigned shelf to {assigned_count} parcels:<br><br>'
   for i in range(assigned_count):
-    return_string += f'ID: {assigned_parcel_id[i]}: Shelf {assigned_shelf[i]}<br>'
+    html_string += f'ID: {assigned_parcel_id[i]}: Shelf {assigned_shelf[i]}<br>'
   if failed_count > 0:
-    return_string += f'<br><b>FAILED</b> to assign shelf to {failed_count} parcels:' + '<br>'.join(failed_parcel_id)
-  return_string += '<br><br><a href="/">Back to start</a>'
+    html_string += f'<br><b>FAILED</b> to assign shelf to {failed_count} parcels:' + '<br>'.join(failed_parcel_id)
+  html_string += '<br><br><a href="/">Back to start</a>'
 
-  return return_string
+  summary_string = f"Assigned {assigned_count} parcels to a shelf."
+  if failed_count > 0:
+    summary_string += f" {failed_count} failed to assign!"
+
+  return html_string, summary_string
 
 
 
