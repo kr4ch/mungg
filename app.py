@@ -104,7 +104,6 @@ def new_parcel_post():
   #              f'dim_1: {dim_1} dim_2: {dim_2} dim_3: {dim_3} weight_g: {weight_g}'
   return redirect(url_for('index'))
 
-
 # Search for a parcel
 @app.route('/search/<parcel_id>')
 def search_parcel(parcel_id):
@@ -115,15 +114,9 @@ def search_parcel(parcel_id):
 def search_parcel_post(parcel_id):
   parcel_id = request.form.get('parcel_id')
 
-  # Test if we got an empty string
-  if parcel_id == '' or parcel_id == 'None':
-    return f'ERROR: Invalid parcel_id {parcel_id}'
-
-  # Test if we got the correct format like "990123456789012345"
-  matched = re.match("99[0-9]{16}", parcel_id)
-  is_match = bool(matched)
-  if not is_match:
-    return f'ERROR: Invalid parcel_id {parcel_id}. Expected "990123456789012345"'
+  # Test if data is valid. Eg. if parcel_id is correct format
+  ret = test_parcel_id_valid(parcel_id)
+  if ret: return ret
 
   mydb = mysql.connector.connect(
     host="mysqldb",
@@ -298,6 +291,110 @@ def export_records():
 def assign_shelf():
   return assign_shelf_to_new_parcels()
 
+# Sort a parcel - search it
+@app.route('/sort_search')
+def sort_search():
+  return render_template('sort-search.html')
+
+# Sort a parcel - search it (after clicking SUBMIT)
+@app.route('/sort_search', methods=['POST'])
+def sort_search_post():
+  parcel_id = request.form.get('parcel_id')
+
+  # Test if data is valid. Eg. if parcel_id is correct format
+  ret = test_parcel_id_valid(parcel_id)
+  if ret: return ret
+
+  mydb = mysql.connector.connect(
+    host="mysqldb",
+    user="root",
+    password="secret",
+    database="inventory"
+  )
+  cursor = mydb.cursor()
+
+  if not checkTableExists(mydb, "parcels"):
+      return f'ERROR: table "parcels" does not exist!'
+
+  # Check if we have a parcel in our table that matches parcel_id
+  sql_cmd = f"SELECT * FROM parcels WHERE parcel_id = '{parcel_id}'"
+  print(sql_cmd)
+  cursor.execute(sql_cmd)
+
+  print(f"DBG: cursor={cursor}")
+  
+  row = cursor.fetchone()
+  if row == None:
+    print(f'ERROR: Unable to find parcel with id {parcel_id}')
+    return f'ERROR: Unable to find parcel with id {parcel_id}<br><a href="/sort_search">go back</a>"'
+
+  for row in cursor:
+    print(f"* {row}")
+    #TODO: Test if multiple parcels match the searched id!
+  
+  # Get the values for the different columns. Make them safe for a URL with quote_plus. For example "/" can not be passed!
+  parcel_id       = quote_plus(str(row[0]))
+  shelf_proposed  = quote_plus(str(row[4]))
+  shelf_selected  = quote_plus(str(row[5]))
+
+  cursor.close()
+
+  return redirect(url_for('sort_edit',  parcel_id=f'{parcel_id}', shelf_proposed=f'{shelf_proposed}', shelf_selected=f'{shelf_selected}'))
+
+# Sort a parcel - edit it
+@app.route('/sort_edit/<parcel_id>/<shelf_proposed>/<shelf_selected>')
+def sort_edit(parcel_id, shelf_proposed, shelf_selected):
+  # Remove quotes from making strings URL safe:
+  parcel_id_uq       = unquote_plus(str(parcel_id))
+  shelf_proposed_uq  = unquote_plus(str(shelf_proposed))
+  shelf_selected_uq  = unquote_plus(str(shelf_selected))
+
+  return render_template('sort-edit.html', parcel_id = parcel_id_uq, shelf_proposed = shelf_proposed_uq, shelf_selected = shelf_selected_uq)
+
+# Sort a parcel - edit it (after clicking SUBMIT)
+@app.route('/sort_edit/<parcel_id>/<shelf_proposed>/<shelf_selected>', methods=['POST'])
+def sort_edit_post(parcel_id, shelf_proposed, shelf_selected):
+  global last_change
+  parcel_id       = request.form.get('parcel_id')
+  shelf_proposed  = request.form.get('shelf_proposed')
+  shelf_selected  = request.form.get('shelf_selected')
+
+  mydb = mysql.connector.connect(
+    host="mysqldb",
+    user="root",
+    password="secret",
+    database="inventory"
+  )
+  cursor = mydb.cursor()
+
+  if not checkTableExists(mydb, "parcels"):
+      return f'ERROR: table "parcels" does not exist!'
+
+  # Check if we have a parcel in our table that matches parcel_id
+  sql_select_cmd = f"SELECT * FROM parcels WHERE parcel_id = '{parcel_id}'"
+  print(sql_select_cmd)  
+  cursor.execute(sql_select_cmd)
+  record = cursor.fetchone()
+  print(f"EDITING {record}")
+
+  # Update this single record
+  sql_update_cmd = f'UPDATE parcels SET '\
+                      f'shelf_selected = {shelf_selected} '\
+                    f'WHERE parcel_id = "{parcel_id}"'
+  print(sql_update_cmd)
+  cursor.execute(sql_update_cmd)
+  mydb.commit()
+
+  # Test if it worked
+  cursor.execute(sql_select_cmd)
+  record = cursor.fetchone()
+  print(record)
+  cursor.close()
+
+  last_change = f"Sorted parcel {record} into shelf {shelf_selected}"
+
+  #return f'SUCCESS! Sorted parcel {record} to shelf {shelf_selected}. Proposed shelf was {shelf_proposed}<br><br><a href="/">Home</a>'
+  return redirect(url_for('index'))
 
 
 if __name__ == "__main__":

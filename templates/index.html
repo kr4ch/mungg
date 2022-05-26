@@ -1,44 +1,60 @@
 <!DOCTYPE html>
 <html>
-<head>
-<style>
-th {
-  text-align: left;
-}
-</style>
-</head>
-<body>
-
-
-
-
-<title>BULA Post Sortier App</title>
-<h1>BULA Post Sortier App</h1>
-
-Last change: {{last_change}}
-<br><br>
-
-<table>
-<tr><th>Total parcels:              </th><td>{{no_parcels_total}}</td></tr> 
-<tr><td>* ready to be collected:    </td><td>{{no_parcels_sorted}}</td></tr>
-<tr><td> </td></tr>
-<tr><th>ToDo</th></tr>
-<tr><td>* to be assigned:           </td><td>{{no_parcels_tobeassigned}}</td></tr> 
-<tr><td>* to be sorted into shelf:  </td><td>{{no_parcels_tobesorted}}</td></tr> 
-</table>
-
-<br><br>
-Interact with parcels:<br>
-<a href="newparcel">Add new parcel</a><br>
-<a href="search/990000000000000000">Search for parcel</a><br>
-<a href="parcels">List all parcels</a><br>
-<br>
-Upload/Download:<br>
-<a href="upload">Upload Excel file with parcels</a><br>
-<a href="export">Export parcels to Excel download</a><br>
-<br>
-Data Processing:<br>
-<a href="assign">Assign shelf to new parcels</a><br>
-<br>
-Admin:<br>
-<a href="initdb">!!RESET DATABASE!!</a><br>
+   <head>
+      <style>
+        th, td {
+          text-align: left;
+          padding: 8px;
+        }
+        th {
+          background-color: #D6EEEE;
+        }
+        td {
+          background-color: #ebffff;
+        }
+         * {
+         font-family: sans-serif;
+         }
+      </style>
+   </head>
+   <body>
+      <title>BULA Post Sortier App</title>
+      <h1>BULA Post Sortier App</h1>
+      Last change: <br>
+      {{last_change}}
+      <br><br>
+      <h4>Parcels</h4>
+      <table>
+         <tr>
+            <th>Total in database</th>
+            <th>{{no_parcels_total}}</th>
+         </tr>
+         <tr>
+            <td>to be assigned:</td>
+            <td>{{no_parcels_tobeassigned}}</td>
+         </tr>
+         <tr>
+            <td>to be sorted into shelf:</td>
+            <td>{{no_parcels_tobesorted}}</td>
+         </tr>
+         <tr>
+            <td>ready to be collected:</td>
+            <td>{{no_parcels_sorted}}</td>
+         </tr>
+      </table>
+      <br><br>
+      Interact with parcels:<br>
+      <a href="newparcel">Add new parcel</a><br>
+      <a href="search/990000000000000000">Search for parcel</a><br>
+      <a href="parcels">List all parcels</a><br>
+      <br>
+      Upload/Download:<br>
+      <a href="upload">Upload Excel file with parcels</a><br>
+      <a href="export">Export parcels to Excel download</a><br>
+      <br>
+      Processing:<br>
+      <a href="assign">Assign shelf to new parcels</a><br>
+      <a href="sort_search">Sort parcel into shelf</a><br>
+      <br>
+      Admin:<br>
+      <a href="initdb">!!RESET DATABASE!!</a><br>
