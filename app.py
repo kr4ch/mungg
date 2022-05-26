@@ -63,8 +63,12 @@ def get_parcels():
 
 # Initialize database (Deletes all existing records!)
 @app.route('/initdb')
-def db_init():
-  db_init_parcels()
+def initdb():
+  global last_change
+  db_init()
+  db_init_table_parcels()
+  db_init_table_client_log()
+  last_change = "Initialized database!"
   return 'Re-initialized database<br><br><a href="/">Back to start</a>'
 
 # Create new parcel by entering all data by hand
@@ -248,22 +252,24 @@ def edit_parcel_post(parcel_id, first_name, last_name, einheit_id, shelf_propose
 
 @app.route("/upload", methods=['GET', 'POST'])
 def upload_file():
-    if request.method == 'POST':
-        print(request.files['file'])
-        f = request.files['file']
-        data_xls = pd.read_excel(f)
-        ret = import_parcels_to_db(data_xls.to_dict())
-        if ret: return ret
-        import_excel_html = '<h1>Imported Excel file:<h1>' + data_xls.to_html() + '<br><br><a href="/">Back to start</a>'
-        return import_excel_html
-    return '''
-    <!doctype html>
-    <title>Upload an excel file</title>
-    <h1>Excel file upload (xls, xlsx, xlsm, xlsb, odf, ods or odt)</h1>
-    <form action="" method=post enctype=multipart/form-data>
-    <p><input type=file name=file><input type=submit value=Upload>
-    </form>
-    '''
+  global last_change
+  if request.method == 'POST':
+      print(request.files['file'])
+      f = request.files['file']
+      data_xls = pd.read_excel(f)
+      html, string = import_parcels_to_db(data_xls.to_dict())
+      last_change = string
+      return html
+      import_excel_html = '<h1>Imported Excel file:<h1>' + data_xls.to_html() + '<br><br><a href="/">Back to start</a>'
+      return import_excel_html
+  return '''
+  <!doctype html>
+  <title>Upload an excel file</title>
+  <h1>Excel file upload (xls, xlsx, xlsm, xlsb, odf, ods or odt)</h1>
+  <form action="" method=post enctype=multipart/form-data>
+  <p><input type=file name=file><input type=submit value=Upload>
+  </form>
+  '''
 
 @app.route("/export", methods=['GET'])
 def export_records():

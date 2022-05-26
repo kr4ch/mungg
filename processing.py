@@ -184,7 +184,11 @@ def import_parcels_to_db(parcel_dict):
     html_imported_parcels += f'<br>\t{parcels_skipped_list[i]} (Cause: {parcels_skipped_cause[i]})'
   html_imported_parcels += f"<br><br>List of successes:<br>" + '<br>\t'.join(parcels_imported_list) + '<br><br><a href="/">Back to start</a>'
 
-  return html_imported_parcels
+  import_parcels_string = f"Imported parcels from Excel Sheet. Of a total {parcel_count} parcels succesfully imported {parcels_imported_count}."
+  if parcels_skipped_count > 0:
+    import_parcels_string += f" {parcels_skipped_count} failed to import!"
+
+  return html_imported_parcels, import_parcels_string
 
 def count_parcels():
     no_parcels_total        = db_count_entries('parcels')
