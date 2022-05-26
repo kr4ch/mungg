@@ -33,6 +33,97 @@ def test_parcel_id_valid(parcel_id):
   if not is_match:
     return f'ERROR: Invalid parcel_id {parcel_id}. Expected "990123456789012345"'
 
+###############################################################################
+# DB Access
+###############################################################################
+
+def db_init_parcels():
+  """
+  Initialize database.
+  Creates tables and all their columns.
+  If the db already existed, it will be dropped!
+  """
+  mydb = mysql.connector.connect(
+    host="mysqldb",
+    user="root",
+    password="secret"
+  )
+  cursor = mydb.cursor()
+
+  cursor.execute("DROP DATABASE IF EXISTS inventory")
+  cursor.execute("CREATE DATABASE inventory")
+  cursor.close()
+
+  mydb = mysql.connector.connect(
+    host="mysqldb",
+    user="root",
+    password="secret",
+    database="inventory"
+  )
+  cursor = mydb.cursor()
+
+  create_table = """
+    CREATE TABLE parcels
+      (parcel_id VARCHAR(255),
+       first_name VARCHAR(255),
+       last_name VARCHAR(255),
+       einheit_id VARCHAR(255),
+       shelf_proposed SMALLINT UNSIGNED,
+       shelf_selected SMALLINT UNSIGNED,
+       dim_1 SMALLINT UNSIGNED,
+       dim_2 SMALLINT UNSIGNED,
+       dim_3 SMALLINT UNSIGNED,
+       weight_g SMALLINT UNSIGNED)
+  """
+  print(create_table)
+
+  cursor.execute("DROP TABLE IF EXISTS parcels")
+  cursor.execute(create_table)
+  cursor.close()
+
+def db_insert_into_table(table, col_name_list, col_val_list):
+  """
+  Insert an entry into table. Specify all columns and values to insert.
+  Parameters:
+    * table         = name of table
+    * col_name_list = list with names of all columns
+    * col_val_list  = list with values to into the col_name_list
+  Returns:
+    nothing
+  """
+
+  print(f'DBG: {table}  {col_name_list}  {col_val_list}')
+
+  mydb = mysql.connector.connect(
+    host="mysqldb",
+    user="root",
+    password="secret",
+    database="inventory"
+  )
+  cursor = mydb.cursor()
+
+  print(1)
+
+  if not checkTableExists(mydb, str(table)):
+      return f'ERROR: table {str(table)} does not exist!'
+
+  print(2)
+
+  sql_cmd =  f'INSERT INTO '\
+                f'{str(table)} '\
+                '( ' + ', '.join(col_name for col_name in col_name_list) + ' )'\
+              'VALUES '\
+                '( ' + ', '.join(col_val for col_val in col_val_list) + ' )'
+
+  print(3)
+                
+  print(sql_cmd)
+  cursor.execute(sql_cmd)
+  mydb.commit()
+  cursor.close()
+
+  # TODO: test if insert worked and return success/fail
+
 def db_select_from_table_where(table, where_col, where_val):
   """
   Select all elements in a table that fit a where column.

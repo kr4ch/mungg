@@ -12,6 +12,8 @@ from urllib.parse import quote_plus, unquote_plus
 app = Flask(__name__)
 
 
+# Global Variables
+last_change = '-'
 
 ###############################################################################
 # Routes
@@ -19,10 +21,12 @@ app = Flask(__name__)
 
 @app.route('/')
 def index():
+  global last_change
   no_parcels_total, no_parcels_tobeassigned, no_parcels_tobesorted, no_parcels_sorted = count_parcels()
 
-  return render_template('index.html', no_parcels_total=no_parcels_total, no_parcels_tobeassigned=no_parcels_tobeassigned, 
-                          no_parcels_tobesorted=no_parcels_tobesorted, no_parcels_sorted=no_parcels_sorted)
+  return render_template('index.html', 
+      last_change=last_change,
+      no_parcels_total=no_parcels_total, no_parcels_tobeassigned=no_parcels_tobeassigned, no_parcels_tobesorted=no_parcels_tobesorted, no_parcels_sorted=no_parcels_sorted)
 
 # List all known parcels
 @app.route('/parcels')
@@ -60,53 +64,10 @@ def get_parcels():
 # Initialize database (Deletes all existing records!)
 @app.route('/initdb')
 def db_init():
-  """
-  Initialize database.
-  Creates tables and all their columns.
-  If the db already existed, it will be dropped!
-  """
-  mydb = mysql.connector.connect(
-    host="mysqldb",
-    user="root",
-    password="secret"
-  )
-  cursor = mydb.cursor()
-
-  cursor.execute("DROP DATABASE IF EXISTS inventory")
-  cursor.execute("CREATE DATABASE inventory")
-  cursor.close()
-
-  mydb = mysql.connector.connect(
-    host="mysqldb",
-    user="root",
-    password="secret",
-    database="inventory"
-  )
-  cursor = mydb.cursor()
-
-  create_table = """
-    CREATE TABLE parcels
-      (parcel_id VARCHAR(255),
-       first_name VARCHAR(255),
-       last_name VARCHAR(255),
-       einheit_id VARCHAR(255),
-       shelf_proposed SMALLINT UNSIGNED,
-       shelf_selected SMALLINT UNSIGNED,
-       dim_1 SMALLINT UNSIGNED,
-       dim_2 SMALLINT UNSIGNED,
-       dim_3 SMALLINT UNSIGNED,
-       weight_g SMALLINT UNSIGNED)
-  """
-  print(create_table)
-
-  cursor.execute("DROP TABLE IF EXISTS parcels")
-  cursor.execute(create_table)
-  cursor.close()
-
+  db_init_parcels()
   return 'Re-initialized database<br><br><a href="/">Back to start</a>'
 
-
-# Create new parcel
+# Create new parcel by entering all data by hand
 @app.route('/newparcel')
 def new_parcel():
   return render_template('new-parcel.html')
@@ -114,6 +75,7 @@ def new_parcel():
 # Create new parcel (after clicking SUBMIT)
 @app.route('/newparcel', methods=['POST'])
 def new_parcel_post():
+  global last_change
   # Variable        gets data from form                 or uses default value if form is empty
   parcel_id       = request.form.get('parcel_id')       or '990123456789012345'
   first_name      = request.form.get('first_name')      or 'Johnny'
@@ -126,41 +88,13 @@ def new_parcel_post():
   dim_3           = request.form.get('dim_3')           or '300'
   weight_g        = request.form.get('weight_g')        or '500'
 
-  ret = test_parcel_id_valid(parcel_id)
-  if ret: return ret
+  ret = db_insert_into_table('parcels',
+          ['parcel_id', 'first_name', 'last_name', 'einheit_id', 'shelf_proposed', 'shelf_selected', 'dim_1', 'dim_2', 'dim_3', 'weight_g'],
+          [f'"{parcel_id}"', f'"{first_name}"', f'"{last_name}"', f'"{einheit_id}"', f'{shelf_proposed}', f'{shelf_selected}', f'{dim_1}', f'{dim_2}', f'{dim_3}', f'{weight_g}'])
+  if ret:
+    last_change = f"ERROR: Unable to manually add parcel {parcel_id}"
 
-  mydb = mysql.connector.connect(
-    host="mysqldb",
-    user="root",
-    password="secret",
-    database="inventory"
-  )
-  cursor = mydb.cursor()
-
-  if not checkTableExists(mydb, "parcels"):
-      return f'ERROR: table "parcels" does not exist!'
-
-  sql_cmd =  f'INSERT INTO '\
-                'parcels '\
-                  '(parcel_id, first_name, last_name, einheit_id, shelf_proposed, shelf_selected, dim_1, dim_2, dim_3, weight_g) '\
-              'VALUES ('\
-                f'"{parcel_id}", '\
-                f'"{first_name}", '\
-                f'"{last_name}", '\
-                f'"{einheit_id}", '\
-                f'{shelf_proposed}, '\
-                f'{shelf_selected}, '\
-                f'{dim_1}, '\
-                f'{dim_2}, '\
-                f'{dim_3}, '\
-                f'{weight_g})'
-  print(sql_cmd)
-
-  cursor.execute(sql_cmd)
-
-  mydb.commit()
-
-  cursor.close()
+  last_change = f"SUCCESS manually adding parcel {parcel_id}"
 
   #return f'Added new parcel: parcel_id: {parcel_id} FirstName:{first_name} LastName: {last_name} einheit_id: {einheit_id} shelf_proposed: {shelf_proposed} shelf_selected: {shelf_selected} '\
   #              f'dim_1: {dim_1} dim_2: {dim_2} dim_3: {dim_3} weight_g: {weight_g}'
