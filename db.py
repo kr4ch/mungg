@@ -1,6 +1,9 @@
 import mysql.connector
 import json
 import re
+import pandas as pd
+from io import BytesIO
+from flask import send_file
 
 
 ###############################################################################
@@ -36,6 +39,7 @@ def test_parcel_id_valid(parcel_id):
 ###############################################################################
 # DB Access
 ###############################################################################
+
 def db_init():
   mydb = mysql.connector.connect(
     host="mysqldb",
@@ -138,7 +142,7 @@ def db_insert_into_table(table, col_name_list, col_val_list):
 
   sql_cmd =  f'INSERT INTO '\
                 f'{str(table)} '\
-                '( ' + ', '.join(col_name for col_name in col_name_list) + ' )'\
+                '( ' + ', '.join(col_name for col_name in col_name_list) + ' ) '\
               'VALUES '\
                 '( ' + ', '.join(col_val for col_val in col_val_list) + ' )'
                
@@ -389,3 +393,29 @@ def db_update_column_for_record_where_column_has_value(table, col_set_name, col_
   # TODO: Add check if update worked
 
   return True
+
+def download_tables_as_xlsx(tables_list, filename):
+  """
+  Download all tables in tables_list as Excel
+  Parameters:
+    * tables_list   = list of tables
+    * filename      = filename of Excel download
+  Returns excel file download
+  """
+  mydb = mysql.connector.connect(
+    host="mysqldb",
+    user="root",
+    password="secret",
+    database="inventory"
+  )
+  output = BytesIO()
+  writer = pd.ExcelWriter(output, engine='xlsxwriter')
+
+  for table in tables_list:
+    df = pd.io.sql.read_sql(f'SELECT * FROM {table}', mydb)
+    print(f'df: {df}')
+    df.to_excel(writer, sheet_name=f'{table}')
+  writer.save()
+  output.seek(0)
+
+  return send_file(output, attachment_filename=f'{filename}', as_attachment=True)

@@ -6,6 +6,8 @@ from io import BytesIO
 from db import *
 from processing import *
 
+from datetime import datetime
+
 from urllib.parse import quote_plus, unquote_plus
 
 
@@ -246,15 +248,14 @@ def edit_parcel_post(parcel_id, first_name, last_name, einheit_id, shelf_propose
 @app.route("/upload", methods=['GET', 'POST'])
 def upload_file():
   global last_change
+  html = 'ERROR: Unable to upload file'
   if request.method == 'POST':
-      print(request.files['file'])
-      f = request.files['file']
-      data_xls = pd.read_excel(f)
-      html, string = import_parcels_to_db(data_xls.to_dict())
-      last_change = string
-      return html
-      import_excel_html = '<h1>Imported Excel file:<h1>' + data_xls.to_html() + '<br><br><a href="/">Back to start</a>'
-      return import_excel_html
+    print(request.files['file'])
+    f = request.files['file']
+    data_xls = pd.read_excel(f)
+    html, string = import_parcels_to_db(data_xls.to_dict())
+    last_change = string
+    return html
   return '''
   <!doctype html>
   <title>Upload an excel file</title>
@@ -266,22 +267,7 @@ def upload_file():
 
 @app.route("/export", methods=['GET'])
 def export_records():
-  mydb = mysql.connector.connect(
-    host="mysqldb",
-    user="root",
-    password="secret",
-    database="inventory"
-  )
-  df = pd.io.sql.read_sql('SELECT * FROM parcels', mydb)
-  print(df)
-
-  output = BytesIO()
-  writer = pd.ExcelWriter(output, engine='xlsxwriter')
-  df.to_excel(writer, sheet_name='Sheet1')
-  writer.save()
-  output.seek(0)
-  
-  return send_file(output, attachment_filename='bula_post_export.xlsx', as_attachment=True)
+  return download_tables_as_xlsx(['parcels', 'client_log'], 'bula_post_parcels.xlsx')
 
 ###############################################################################
 # Processing
@@ -398,6 +384,28 @@ def sort_edit_post(parcel_id, shelf_proposed, shelf_selected):
 
   #return f'SUCCESS! Sorted parcel {record} to shelf {shelf_selected}. Proposed shelf was {shelf_proposed}<br><br><a href="/">Home</a>'
   return redirect(url_for('index'))
+
+###############################################################################
+# Client access
+###############################################################################
+
+# Check-In client
+@app.route('/checkin')
+def checkin():
+  return render_template('checkin.html')
+
+# Check-In client (after clicking SUBMIT)
+@app.route('/checkin', methods=['POST'])
+def checkin_post():
+  client_id = request.form.get('client_id')
+  # TODO: Check if client id is valid  
+
+  checkin_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
+  db_insert_into_table('client_log', ['client_id', 'checkin_time'], [f'{client_id}', f'"{checkin_time}"'])
+
+  return redirect(url_for('index'))
+
 
 
 if __name__ == "__main__":
