@@ -7,9 +7,13 @@ from io import BytesIO
 from db import *
 from processing import *
 
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from urllib.parse import quote_plus, unquote_plus
+
+#plotting
+import base64
+from matplotlib.figure import Figure
 
 
 app = Flask(__name__)
@@ -544,6 +548,52 @@ def client_log():
   html += '</table><br><br><a href="/">Back to start</a>'
   
   return html
+
+@app.route("/statistics")
+def statistics():
+  return render_template('statistics.html')
+
+@app.route("/plot")
+def plot():
+  # Generate the figure **without using pyplot**.
+  fig = Figure()
+  ax = fig.subplots()
+
+  # Get all dates
+  DATETIME_LOWER = datetime(2022, 1, 1)
+  results = db_select_from_table_greater_than('client_log', 'store_time', DATETIME_LOWER)
+  print(results)
+  dates_list = []
+  for row in results:
+    date = row[3]
+    if date not in dates_list:
+      dates_list.append(date)
+
+  counts_list = []
+  dates_list_days = []
+  for date in dates_list:
+    date_rounded_day = date.strptime(date.strftime("%Y-%m-%d"), "%Y-%m-%d")
+    if date_rounded_day not in dates_list_days:
+      dates_list_days.append(date_rounded_day)
+      date_lower  = date.strptime(date.strftime("%Y-%m-%d"), "%Y-%m-%d") # round down to the day
+      date_upper  = date_lower + timedelta(days=1)
+      counts_list.append(db_count_entries_where_in_range('client_log', 'store_time', date_lower, date_upper))
+
+  print(dates_list)
+  print(dates_list_days)
+  print(counts_list)
+  ax.plot(dates_list_days, counts_list, "x")
+  fig.suptitle("Parcels processed per day")
+  ax.set_title("Parcels SORTED per day")
+
+  #ax.plot([1, 2])
+  # Save it to a temporary buffer.
+  buf = BytesIO()
+  fig.savefig(buf, format="png")
+  buf.seek(0)
+
+  return send_file(buf, mimetype="image/png")
+
 
 
 if __name__ == "__main__":

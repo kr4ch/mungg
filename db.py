@@ -171,9 +171,66 @@ def db_select_from_table_where(table, where_col, where_val):
 
   if not checkTableExists(mydb, str(table)):
       print(f'ERROR: table f"{table}" does not exist!')
-      return 0, 0, 0
+      return 0
 
   sql_cmd = f"SELECT * FROM {table} WHERE {where_col} = '{str(where_val)}'"
+  print(sql_cmd)
+  cursor.execute(sql_cmd)
+  
+  results = cursor.fetchall()
+
+  cursor.close()
+
+  return results
+
+def db_select_from_table_where_not(table, where_col, where_val):
+  """
+  Select all elements in a table that do NOT fit a where column.
+  Returns:
+    results = all results as list with rows.
+  """
+  mydb = mysql.connector.connect(
+    host="mysqldb",
+    user="root",
+    password="secret",
+    database="inventory"
+  )
+  cursor = mydb.cursor()
+
+  if not checkTableExists(mydb, str(table)):
+      print(f'ERROR: table f"{table}" does not exist!')
+      return 0, 0, 0
+
+  sql_cmd = f"SELECT * FROM {table} WHERE NOT {where_col} = {where_val}"
+  print(sql_cmd)
+  cursor.execute(sql_cmd)
+  
+  results = cursor.fetchall()
+
+  cursor.close()
+
+  return results
+
+
+def db_select_from_table_greater_than(table, where_col, where_val):
+  """
+  Select all elements in a table where column is greater than a value
+  Returns:
+    results = all results as list with rows.
+  """
+  mydb = mysql.connector.connect(
+    host="mysqldb",
+    user="root",
+    password="secret",
+    database="inventory"
+  )
+  cursor = mydb.cursor()
+
+  if not checkTableExists(mydb, str(table)):
+      print(f'ERROR: table f"{table}" does not exist!')
+      return 0, 0, 0
+
+  sql_cmd = f"SELECT * FROM {table} WHERE {where_col} > '{where_val}'"
   print(sql_cmd)
   cursor.execute(sql_cmd)
   
@@ -339,6 +396,33 @@ def db_count_entries_where_not_and_not(table, where_col, where_val, where_col2, 
       return 0
 
   sql_cmd = f"SELECT * FROM {table} WHERE NOT {where_col} = '{str(where_val)}' AND NOT {where_col2} = '{str(where_val2)}'"
+  cursor.execute(sql_cmd)
+  
+  results = cursor.fetchall()
+  count = len(results)
+
+  cursor.close()
+
+  return count
+
+def db_count_entries_where_in_range(table, where_col, where_val_lower, where_val_upper):
+  """
+  Counts the number of entries that fit a certain condition (where_col has value greater than where_val_lower and has value lower than where_val_upper).
+  Returns: number of entries that fit condition or 0 if unable to find table
+  """
+  mydb = mysql.connector.connect(
+    host="mysqldb",
+    user="root",
+    password="secret",
+    database="inventory"
+  )
+  cursor = mydb.cursor()
+
+  if not checkTableExists(mydb, str(table)):
+      print(f'ERROR: table f"{table}" does not exist!')
+      return 0
+
+  sql_cmd = f"SELECT * FROM {table} WHERE {where_col} > '{str(where_val_lower)}' AND {where_col} < '{str(where_val_upper)}'"
   cursor.execute(sql_cmd)
   
   results = cursor.fetchall()
