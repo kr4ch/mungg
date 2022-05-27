@@ -18,6 +18,8 @@ def assign_shelf_to_new_parcels():
   failed_count       = 0
   failed_parcel_id   = []
 
+  SHELF_MAX = 5000 # Maximum number of shelves
+
   # Find all parcels that have not been assigned to a shelf yet  
   results = db_select_from_table_where('parcels', 'shelf_proposed', '0')
 
@@ -39,7 +41,7 @@ def assign_shelf_to_new_parcels():
         shelf_proposed_einheit = row_einheit[4]
         # TODO: Check if there is enough space in this shelf
 
-        if parcel_id_einheit != parcel_id_this and shelf_proposed_einheit != 0 and parcel_needs_shelf:
+        if parcel_id_einheit != parcel_id_this and shelf_proposed_einheit != 0 and shelf_proposed_einheit < SHELF_MAX and parcel_needs_shelf:
             shelf_proposed = row_einheit[4]
             print(f'Parcel {parcel_id_this} has already parcels for einheit {einheit_id_this} in shelf {shelf_proposed}')
             parcel_needs_shelf = False

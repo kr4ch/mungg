@@ -1,4 +1,5 @@
 from cgitb import html
+from termios import TABDLY
 from flask import Flask, request, render_template, url_for, redirect, jsonify, send_file
 import pandas as pd
 from io import BytesIO
@@ -382,11 +383,17 @@ def sort_edit_post(parcel_id, shelf_proposed, shelf_selected):
 
   last_change = f"Sorted parcel {record} into shelf {shelf_selected}"
 
+  # Add entry into client log to indicate shelf was sorted
+  # TODO: how to determine client (sorter) id?
+  client_id = 0
+  store_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+  db_insert_into_table('client_log', ['client_id', 'store_time'], [f'{client_id}', f'"{store_time}"'])
+
   #return f'SUCCESS! Sorted parcel {record} to shelf {shelf_selected}. Proposed shelf was {shelf_proposed}<br><br><a href="/">Home</a>'
   return redirect(url_for('index'))
 
 ###############################################################################
-# Client access
+# Client access (Check-In / Check-Out)
 ###############################################################################
 
 # Check-In client
@@ -404,8 +411,129 @@ def checkin_post():
 
   db_insert_into_table('client_log', ['client_id', 'checkin_time'], [f'{client_id}', f'"{checkin_time}"'])
 
-  return redirect(url_for('index'))
+  return redirect(url_for('client_search'))
+  
+# Client search by einheit ID
+@app.route('/client_search')
+def client_search():
+  return render_template('client-search.html')
 
+# Client search (after clicking SUBMIT)
+@app.route('/client_search', methods=['POST'])
+def client_search_post():
+  einheit_id = request.form.get('einheit_id')
+  # TODO: Check if einheit id is valid
+  SHELF_MAX = 5000
+
+  # Find all parcels for this einheit ID
+  results = db_select_from_table_where('parcels', 'einheit_id', f'{einheit_id}')
+  print(f'{results}')
+
+  if results == []:
+    html = f'Sorry, there are no parcels for einheit {einheit_id}'
+  else:
+    html = f'The parcels for einheit {einheit_id} can be found in shelves:<br>'
+    shelf_list = []
+    for row in results:
+      shelf_selected = row[5]
+      shelf_list.append(shelf_selected)
+      # Report a shelf only once
+      if shelf_list.count(shelf_selected) == 1 and shelf_selected < SHELF_MAX:
+        html += f'Shelf #{shelf_selected}<br>'
+  html += '<br><br><a href="/">go back</a>'
+
+  return html
+
+# Check-Out client
+@app.route('/checkout')
+def checkout():
+  return render_template('checkout.html')
+
+# Check-Out client (after clicking SUBMIT)
+@app.route('/checkout', methods=['POST'])
+def checkout_post():
+  client_id = request.form.get('client_id')
+  # TODO: Check if client id is valid
+
+  return redirect(url_for('checkout_parcel', client_id=client_id))
+  
+# Client checkout parcels
+@app.route('/checkout_parcel/<client_id>')
+def checkout_parcel(client_id):
+  return render_template('checkout-parcel.html')
+
+# Client checkout parcels (after clicking SUBMIT)
+@app.route('/checkout_parcel/<client_id>', methods=['POST'])
+def checkout_parcel_post(client_id):
+  parcel_id = request.form.get('parcel_id')
+  ret = test_parcel_id_valid(parcel_id)
+  if ret: return ret
+
+  # Find the parcel and check if it can be checked out
+  SHELF_CHECKED_OUT = 50000
+  results = db_select_from_table_where('parcels', 'parcel_id', f'{parcel_id}')
+  print(f'{results}')
+
+  # Handle parcel not found
+  if not db_test_if_value_exists_in_column_in_table('parcels', 'parcel_id', f'{parcel_id}'):
+    return f'ERROR: Parcel can not be found!<br><br><a href="/checkout_parcel/{client_id}">try again</a>'
+
+  # Handle parcel not yet sorted or already checked out
+  shelf_proposed = results[0][4]
+  shelf_selected = results[0][5]
+  if (shelf_proposed == 0):
+    return f'ERROR: Parcel has not yet been processed!<br><br><a href="/checkout_parcel/{client_id}">try again</a>'
+  if (shelf_proposed == 50000):
+    return f'ERROR: Parcel has already been checked out!<br><br><a href="/checkout_parcel/{client_id}">try again</a>'
+  if (shelf_selected == 0):
+    return f'ERROR: Parcel has not yet been sorted into shelf {shelf_proposed}!<br><br><a href="/checkout_parcel/{client_id}">try again</a>'
+  if (shelf_selected == 50000):
+    return f'ERROR: Parcel has already been checked out!<br><br><a href="/checkout_parcel/{client_id}">try again</a>'
+
+  # All checks have passed, the client can check out the parcel
+
+  # Set the shelf_proposed and shelf_selected to 50000 to mark as "checked out"
+  db_update_column_for_record_where_column_has_value('parcels', 'shelf_proposed', SHELF_CHECKED_OUT, 'parcel_id', f'{parcel_id}')
+  db_update_column_for_record_where_column_has_value('parcels', 'shelf_selected', SHELF_CHECKED_OUT, 'parcel_id', f'{parcel_id}')
+
+  # Insert entry into client log to indicate parcel was checked out
+  checkout_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+  db_insert_into_table('client_log', ['client_id', 'checkout_time', 'parcel_id'], [f'{client_id}', f'"{checkout_time}"', f'"{parcel_id}"'])
+
+  # Depending on the users intention either check out another parcel or return to start
+  if request.form['action'] == 'Next':
+    # Direct to this route again
+    redirect(url_for('checkout_parcel', client_id=client_id))
+  elif request.form['action'] == 'Done':
+    return 'Finished checking out parcels<br><br><a href="/">go home</a>'
+  else:
+    print("ERROR: Unknown submit name")
+  return
+
+# List client log
+@app.route('/clientlog')
+def client_log():
+  mydb = mysql.connector.connect(
+    host="mysqldb",
+    user="root",
+    password="secret",
+    database="inventory"
+  )
+  cursor = mydb.cursor()
+  cursor.execute("SELECT * FROM client_log")
+
+  row_headers=[x[0] for x in cursor.description] #this will extract row headers
+  results = cursor.fetchall()
+
+  # Create table in HTML that lists all parcels
+  html = '<h1>Client Log</h1>'
+  html += '<table><tr>'+' '.join(['<th>'+str(item)+'</th>' for item in row_headers]) + '</tr>'
+  for row in results:
+    this_parcel_id = row[0]
+    html += '<tr>'+' '.join(['<td>'+str(item)+'</td>' for item in row])
+  html += '</table><br><br><a href="/">Back to start</a>'
+  
+  return html
 
 
 if __name__ == "__main__":
