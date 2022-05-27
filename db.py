@@ -320,6 +320,34 @@ def db_count_entries_where_and_not(table, where_col, where_val, where_col2, wher
 
   return count
 
+def db_count_entries_where_not_and_not(table, where_col, where_val, where_col2, where_val2):
+  """
+  Counts the number of entries thatdo NOT fit a certain condition (where_col has value where_val)
+  and do NOT fit a second contition (where_col2 has value where_val2).
+  Returns: number of entries that fit condition or 0 if unable to find table
+  """
+  mydb = mysql.connector.connect(
+    host="mysqldb",
+    user="root",
+    password="secret",
+    database="inventory"
+  )
+  cursor = mydb.cursor()
+
+  if not checkTableExists(mydb, str(table)):
+      print(f'ERROR: table f"{table}" does not exist!')
+      return 0
+
+  sql_cmd = f"SELECT * FROM {table} WHERE NOT {where_col} = '{str(where_val)}' AND NOT {where_col2} = '{str(where_val2)}'"
+  cursor.execute(sql_cmd)
+  
+  results = cursor.fetchall()
+  count = len(results)
+
+  cursor.close()
+
+  return count
+
 def db_test_if_value_exists_in_column_in_table(table, column, value):
   """
   Select all elements in a table that fit a where column.

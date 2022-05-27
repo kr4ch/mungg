@@ -25,11 +25,11 @@ last_change = '-'
 @app.route('/')
 def index():
   global last_change
-  no_parcels_total, no_parcels_tobeassigned, no_parcels_tobesorted, no_parcels_sorted = count_parcels()
+  no_parcels_total, no_parcels_tobeassigned, no_parcels_tobesorted, no_parcels_sorted, no_parcels_collected = count_parcels()
 
   return render_template('index.html', 
       last_change=last_change,
-      no_parcels_total=no_parcels_total, no_parcels_tobeassigned=no_parcels_tobeassigned, no_parcels_tobesorted=no_parcels_tobesorted, no_parcels_sorted=no_parcels_sorted)
+      no_parcels_total=no_parcels_total, no_parcels_tobeassigned=no_parcels_tobeassigned, no_parcels_tobesorted=no_parcels_tobesorted, no_parcels_sorted=no_parcels_sorted, no_parcels_collected=no_parcels_collected)
 
 # List all known parcels
 @app.route('/parcels')
@@ -385,9 +385,10 @@ def sort_edit_post(parcel_id, shelf_proposed, shelf_selected):
 
   # Add entry into client log to indicate shelf was sorted
   # TODO: how to determine client (sorter) id?
+  # TODO: Consider also saving the stored shelf number?
   client_id = 0
   store_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-  db_insert_into_table('client_log', ['client_id', 'store_time'], [f'{client_id}', f'"{store_time}"'])
+  db_insert_into_table('client_log', ['client_id', 'store_time', 'parcel_id'], [f'{client_id}', f'"{store_time}"', f'"{parcel_id}"'])
 
   #return f'SUCCESS! Sorted parcel {record} to shelf {shelf_selected}. Proposed shelf was {shelf_proposed}<br><br><a href="/">Home</a>'
   return redirect(url_for('index'))
@@ -429,16 +430,22 @@ def client_search_post():
   results = db_select_from_table_where('parcels', 'einheit_id', f'{einheit_id}')
   print(f'{results}')
 
+  unsorted_parcels = 0
   if results == []:
     html = f'Sorry, there are no parcels for einheit {einheit_id}'
   else:
-    html = f'The parcels for einheit {einheit_id} can be found in shelves:<br>'
+    html = f'The parcels for einheit {einheit_id} can be found in shelves:<br><br>'
     shelf_list = []
     for row in results:
       shelf_selected = row[5]
       shelf_list.append(shelf_selected)
+      # Test if a parcel has not yet been sorted into a shelf
+      if shelf_selected == 0:
+        unsorted_parcels += 1
+        if unsorted_parcels < 2:
+          html += "Some parcels have not yet been sorted. Please come back later<br>"
       # Report a shelf only once
-      if shelf_list.count(shelf_selected) == 1 and shelf_selected < SHELF_MAX:
+      elif shelf_list.count(shelf_selected) == 1 and shelf_selected < SHELF_MAX:
         html += f'Shelf #{shelf_selected}<br>'
   html += '<br><br><a href="/">go back</a>'
 
@@ -466,6 +473,8 @@ def checkout_parcel(client_id):
 @app.route('/checkout_parcel/<client_id>', methods=['POST'])
 def checkout_parcel_post(client_id):
   parcel_id = request.form.get('parcel_id')
+  if parcel_id == '':
+    return 'Finished checking out parcels<br><br><a href="/">go home</a>'
   ret = test_parcel_id_valid(parcel_id)
   if ret: return ret
 
@@ -481,6 +490,7 @@ def checkout_parcel_post(client_id):
   # Handle parcel not yet sorted or already checked out
   shelf_proposed = results[0][4]
   shelf_selected = results[0][5]
+  print(f'shelf_proposed={shelf_proposed} shelf_selected={shelf_selected}')
   if (shelf_proposed == 0):
     return f'ERROR: Parcel has not yet been processed!<br><br><a href="/checkout_parcel/{client_id}">try again</a>'
   if (shelf_proposed == 50000):
@@ -503,12 +513,12 @@ def checkout_parcel_post(client_id):
   # Depending on the users intention either check out another parcel or return to start
   if request.form['action'] == 'Next':
     # Direct to this route again
-    redirect(url_for('checkout_parcel', client_id=client_id))
+    return redirect(url_for('checkout_parcel', client_id=client_id))
   elif request.form['action'] == 'Done':
     return 'Finished checking out parcels<br><br><a href="/">go home</a>'
   else:
     print("ERROR: Unknown submit name")
-  return
+  return redirect(url_for('index'))
 
 # List client log
 @app.route('/clientlog')
@@ -525,12 +535,12 @@ def client_log():
   row_headers=[x[0] for x in cursor.description] #this will extract row headers
   results = cursor.fetchall()
 
-  # Create table in HTML that lists all parcels
-  html = '<h1>Client Log</h1>'
-  html += '<table><tr>'+' '.join(['<th>'+str(item)+'</th>' for item in row_headers]) + '</tr>'
+  # Create table in HTML with the log
+  html = '<h1>Log</h1>'
+  html += '<table><tr><th>#</th>'+' '.join(['<th>'+str(item)+'</th>' for item in row_headers]) + '</tr>'
   for row in results:
     this_parcel_id = row[0]
-    html += '<tr>'+' '.join(['<td>'+str(item)+'</td>' for item in row])
+    html += f'<tr><td>{results.index(row)}</td>'+' '.join(['<td>'+str(item)+'</td>' for item in row])
   html += '</table><br><br><a href="/">Back to start</a>'
   
   return html

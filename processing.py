@@ -200,5 +200,6 @@ def count_parcels():
     no_parcels_total        = db_count_entries('parcels')
     no_parcels_tobeassigned = db_count_entries_where_and('parcels', 'shelf_selected', '0', 'shelf_proposed', '0')
     no_parcels_tobesorted   = db_count_entries_where_and_not('parcels', 'shelf_selected', '0', 'shelf_proposed', '0')
-    no_parcels_sorted       = db_count_entries_where_not('parcels', 'shelf_selected', '0')
-    return no_parcels_total, no_parcels_tobeassigned, no_parcels_tobesorted, no_parcels_sorted
+    no_parcels_sorted       = db_count_entries_where_not_and_not('parcels', 'shelf_selected', '0', 'shelf_proposed', '50000')
+    no_parcels_collected    = db_count_entries_where_and('parcels', 'shelf_selected', '50000', 'shelf_proposed', '50000')
+    return no_parcels_total, no_parcels_tobeassigned, no_parcels_tobesorted, no_parcels_sorted, no_parcels_collected
