@@ -330,27 +330,40 @@ def sort_search_post():
   parcel_id       = quote_plus(str(row[0]))
   shelf_proposed  = quote_plus(str(row[4]))
   shelf_selected  = quote_plus(str(row[5]))
+  first_name      = quote_plus(str(row[1]))
+  last_name       = quote_plus(str(row[2]))
+  einheit_id      = quote_plus(str(row[3]))
 
   cursor.close()
 
-  return redirect(url_for('sort_edit',  parcel_id=f'{parcel_id}', shelf_proposed=f'{shelf_proposed}', shelf_selected=f'{shelf_selected}'))
+  return redirect(url_for('sort_edit',  parcel_id=f'{parcel_id}', shelf_proposed=f'{shelf_proposed}', shelf_selected=f'{shelf_selected}', first_name=f'{first_name}', last_name=f'{last_name}', einheit_id=f'{einheit_id}'))
 
 # Sort a parcel - edit it
-@app.route('/sort_edit/<parcel_id>/<shelf_proposed>/<shelf_selected>')
-def sort_edit(parcel_id, shelf_proposed, shelf_selected):
+@app.route('/sort_edit/<parcel_id>/<shelf_proposed>/<shelf_selected>/<first_name>/<last_name>/<einheit_id>')
+def sort_edit(parcel_id, shelf_proposed, shelf_selected, first_name, last_name, einheit_id):
+  SHELF_MAX = 5000
+  SHELF_SORTED = 5000
   # Remove quotes from making strings URL safe:
-  parcel_id_uq       = unquote_plus(str(parcel_id))
-  shelf_proposed_uq  = unquote_plus(str(shelf_proposed))
-  shelf_selected_uq  = unquote_plus(str(shelf_selected))
+  parcel_id_uq        = unquote_plus(str(parcel_id))
+  shelf_proposed_uq   = unquote_plus(str(shelf_proposed))
+  shelf_selected_uq   = unquote_plus(str(shelf_selected))
+  first_name_uq       = unquote_plus(str(first_name))
+  last_name_uq        = unquote_plus(str(last_name))
+  einheit_id_uq       = unquote_plus(str(einheit_id))
 
-  return render_template('sort-edit.html', parcel_id = parcel_id_uq, shelf_proposed = shelf_proposed_uq, shelf_selected = shelf_selected_uq)
+  if int(shelf_selected_uq) != 0 and int(shelf_selected_uq) < SHELF_MAX:
+    note = f"WARNING: This parcel has already been sorted into shelf {shelf_selected_uq}"
+  elif shelf_selected == SHELF_SORTED:
+    note = "WARNING: This parcel has already been checked out!"
+  else:
+    note = ""
+
+  return render_template('sort-edit.html', parcel_id = parcel_id_uq, shelf_proposed = shelf_proposed_uq, shelf_selected = shelf_selected_uq, note=note, first_name = first_name_uq, last_name = last_name_uq, einheit_id = einheit_id_uq)
 
 # Sort a parcel - edit it (after clicking SUBMIT)
 @app.route('/sort_edit/<parcel_id>/<shelf_proposed>/<shelf_selected>', methods=['POST'])
 def sort_edit_post(parcel_id, shelf_proposed, shelf_selected):
   global last_change
-  parcel_id       = request.form.get('parcel_id')
-  shelf_proposed  = request.form.get('shelf_proposed')
   shelf_selected  = request.form.get('shelf_selected')
 
   mydb = mysql.connector.connect(
