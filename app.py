@@ -51,6 +51,7 @@ def get_parcels():
   row_headers=[x[0] for x in cursor.description] #this will extract row headers
 
   results = cursor.fetchall()
+  cursor.close()
 #  json_data=[]
 #  for result in results:
 #    json_data.append(dict(zip(row_headers,result)))
@@ -277,6 +278,13 @@ def export_records():
 ###############################################################################
 # Processing
 ###############################################################################
+
+# Fix missing einheit ID
+@app.route('/einheit')
+def fix_einheit():
+  global last_change
+  html_string = fix_parcels_missing_einheit()
+  return html_string
 
 @app.route('/assign')
 def assign_shelf():

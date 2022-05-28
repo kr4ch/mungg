@@ -6,7 +6,36 @@ from db import *
 ###############################################################################
 # Data Processing
 ###############################################################################
-  
+
+def fix_parcels_missing_einheit():
+  """
+  Find all parcels that are missing einheit ID and allow editing them.
+  """
+  mydb = mysql.connector.connect(
+    host="mysqldb",
+    user="root",
+    password="secret",
+    database="inventory"
+  )
+  cursor = mydb.cursor()
+
+  cursor.execute("SELECT * FROM parcels WHERE einheit_id = 0")
+
+  row_headers=[x[0] for x in cursor.description] #this will extract row headers
+  results = cursor.fetchall()
+  cursor.close()
+
+  # Create table in HTML that lists all parcels
+  parcel_table_html = '<h1>Parcel Overview</h1>'
+  parcel_table_html += '<table><tr>'+' '.join(['<th>'+str(item)+'</th>' for item in row_headers]) + '</tr>'
+  for row in results:
+    this_parcel_id = row[0]
+    parcel_table_html += '<tr>'+' '.join(['<td>'+str(item)+'</td>' for item in row]) + f'<td><a href="search/{this_parcel_id}">Edit</a></td></tr>'
+  parcel_table_html += '</table><br><br><a href="/">Back to start</a>'
+
+  return parcel_table_html
+
+
 def assign_shelf_to_new_parcels():
   """
   Find all parcels that have not yet been assigned to a shelf (shelf_proposed) 
