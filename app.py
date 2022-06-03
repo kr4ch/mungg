@@ -293,6 +293,13 @@ def assign_shelf():
   last_change = summary_string
   return html_string
 
+@app.route('/assign_fillup')
+def assign_shelf_fillup():
+  global last_change
+  html_string, summary_string = assign_shelf_to_new_parcels_fillup()
+  last_change = summary_string
+  return html_string
+
 # Sort a parcel - search it
 @app.route('/sort_search')
 def sort_search():

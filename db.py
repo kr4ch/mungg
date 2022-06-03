@@ -183,6 +183,64 @@ def db_select_from_table_where(table, where_col, where_val):
 
   return results
 
+
+def db_select_from_table_where_and(table, where_col, where_val, where_col2, where_val2):
+  """
+  Select all elements in a table that fit a where column and a where2 column.
+  Returns:
+    results = all results as list with rows.
+  """
+  mydb = mysql.connector.connect(
+    host="mysqldb",
+    user="root",
+    password="secret",
+    database="inventory"
+  )
+  cursor = mydb.cursor()
+
+  if not checkTableExists(mydb, str(table)):
+      print(f'ERROR: table f"{table}" does not exist!')
+      return 0
+
+  sql_cmd = f"SELECT * FROM {table} WHERE {where_col} = '{str(where_val)}' AND {where_col2} = '{str(where_val2)}'"
+  print(sql_cmd)
+  cursor.execute(sql_cmd)
+  
+  results = cursor.fetchall()
+
+  cursor.close()
+
+  return results
+
+
+def db_select_from_table_where_and_not_and_not(table, where_col, where_val, where_col2, where_val2, where_col3, where_val3):
+  """
+  Select all elements in a table that fit a where column and NOT a where2 column.
+  Returns:
+    results = all results as list with rows.
+  """
+  mydb = mysql.connector.connect(
+    host="mysqldb",
+    user="root",
+    password="secret",
+    database="inventory"
+  )
+  cursor = mydb.cursor()
+
+  if not checkTableExists(mydb, str(table)):
+      print(f'ERROR: table f"{table}" does not exist!')
+      return 0
+
+  sql_cmd = f"SELECT * FROM {table} WHERE {where_col} = '{str(where_val)}' AND NOT {where_col2} = '{str(where_val2)}' AND NOT {where_col3} = '{str(where_val3)}'"
+  print(sql_cmd)
+  cursor.execute(sql_cmd)
+  
+  results = cursor.fetchall()
+
+  cursor.close()
+
+  return results
+
 def db_select_from_table_where_not(table, where_col, where_val):
   """
   Select all elements in a table that do NOT fit a where column.
