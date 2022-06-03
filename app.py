@@ -13,7 +13,7 @@ from urllib.parse import quote_plus, unquote_plus
 
 #plotting
 import base64
-from matplotlib.figure import Figure
+import matplotlib.pyplot as plt
 
 
 app = Flask(__name__)
@@ -369,8 +369,8 @@ def sort_edit(parcel_id, shelf_proposed, shelf_selected, first_name, last_name, 
   return render_template('sort-edit.html', parcel_id = parcel_id_uq, shelf_proposed = shelf_proposed_uq, shelf_selected = shelf_selected_uq, note=note, first_name = first_name_uq, last_name = last_name_uq, einheit_id = einheit_id_uq)
 
 # Sort a parcel - edit it (after clicking SUBMIT)
-@app.route('/sort_edit/<parcel_id>/<shelf_proposed>/<shelf_selected>', methods=['POST'])
-def sort_edit_post(parcel_id, shelf_proposed, shelf_selected):
+@app.route('/sort_edit/<parcel_id>/<shelf_proposed>/<shelf_selected>/<first_name>/<last_name>/<einheit_id>', methods=['POST'])
+def sort_edit_post(parcel_id, shelf_proposed, shelf_selected, first_name, last_name, einheit_id):
   global last_change
   shelf_selected  = request.form.get('shelf_selected')
 
@@ -576,9 +576,7 @@ def statistics():
 
 @app.route("/plot")
 def plot():
-  # Generate the figure **without using pyplot**.
-  fig = Figure()
-  ax = fig.subplots()
+  fig, ax = plt.subplots()
 
   # Get all dates
   DATETIME_LOWER = datetime(2022, 1, 1)
@@ -606,6 +604,8 @@ def plot():
   ax.plot(dates_list_days, counts_list, "x")
   fig.suptitle("Parcels processed per day")
   ax.set_title("Parcels SORTED per day")
+
+  plt.xticks(dates_list_days)
 
   #ax.plot([1, 2])
   # Save it to a temporary buffer.
