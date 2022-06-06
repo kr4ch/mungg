@@ -87,7 +87,7 @@ def get_shelves():
 
   global html_header
   html = html_header
-  html += '<body><h1>Shelf Overview</h1>'
+  html += '<body><h1>Shelf Overview</h1><a href="/">Back to start</a>'
   html += f'<table><tr><th>Shelves 30cm</th><th>Shelves 45cm</th><th>Shelves 90cm</th></tr>'
   html += f'<tr><th>{parcels_count_in_shelves_30} Parcels</th><th>{parcels_count_in_shelves_45} Parcels</th><th>{parcels_count_in_shelves_90} Parcels</th></tr>'
   html += f'<tr><th>No. {min(SHELF_1_LIST)} - {max(SHELF_1_LIST)}</th><th>No. {min(SHELF_2_LIST)} - {max(SHELF_2_LIST)}</th><th>No. {min(SHELF_3_LIST)} - {max(SHELF_3_LIST)}</th></tr>'
@@ -135,7 +135,7 @@ def get_shelves():
     elif usage_shelf_90 > 0.5:
       html += 'class="highlight-red"'
     html += f'><a href="/shelf/{k}">#{k}</a><br>{db_count_entries_where("parcels", "shelf_selected", k)} Parcels<br>{int(100*usage_shelf_90)}% full</td></tr>'
-  html += '</table><br><br><a href="/">Back to start</a></body>'
+  html += '</table></body>'
   return html
 
 def fix_parcels_missing_einheit():
