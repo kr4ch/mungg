@@ -74,6 +74,12 @@ def list_shelves():
   html = get_shelves()  
   return html
 
+# Detail single shelf
+@app.route('/shelf/<shelf_no>')
+def shelf(shelf_no):
+  html = get_shelf(shelf_no)  
+  return html
+
 # Initialize database (Deletes all existing records!)
 @app.route('/initdb')
 def initdb():
@@ -152,7 +158,7 @@ def search_parcel_post(parcel_id):
   row = cursor.fetchone()
   if row == None:
     print(f'ERROR: Unable to find parcel with id {parcel_id}')
-    return f'ERROR: Unable to find parcel with id {parcel_id}<br><a href="/search">go back</a>"'
+    return f'ERROR: Unable to find parcel with id {parcel_id}<br><a href="/search/990000000000000000">go back</a>"'
 
   for row in cursor:
     print(f"* {row}")

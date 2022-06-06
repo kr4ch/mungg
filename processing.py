@@ -87,7 +87,7 @@ def get_shelves():
 
   global html_header
   html = html_header
-  html += '<body><h1>Shelf Overview</h1><a href="/">Back to start</a>'
+  html += '<body><h1>Shelf Overview</h1><a href="/">Back to start</a><br>'
   html += f'<table><tr><th>Shelves 30cm</th><th>Shelves 45cm</th><th>Shelves 90cm</th></tr>'
   html += f'<tr><th>{parcels_count_in_shelves_30} Parcels</th><th>{parcels_count_in_shelves_45} Parcels</th><th>{parcels_count_in_shelves_90} Parcels</th></tr>'
   html += f'<tr><th>No. {min(SHELF_1_LIST)} - {max(SHELF_1_LIST)}</th><th>No. {min(SHELF_2_LIST)} - {max(SHELF_2_LIST)}</th><th>No. {min(SHELF_3_LIST)} - {max(SHELF_3_LIST)}</th></tr>'
@@ -136,6 +136,51 @@ def get_shelves():
       html += 'class="highlight-red"'
     html += f'><a href="/shelf/{k}">#{k}</a><br>{db_count_entries_where("parcels", "shelf_selected", k)} Parcels<br>{int(100*usage_shelf_90)}% full</td></tr>'
   html += '</table></body>'
+  return html
+
+def get_shelf(shelf_no):
+  """
+  Returns a HTML view of the requested shelf number
+  """
+  shelf = int(shelf_no)
+  parcel_count = db_count_entries_where('parcels', 'shelf_selected', shelf)
+
+  if shelf in SHELF_1_LIST:
+    shelf_dim = SHELF_1_DIM
+  elif shelf in SHELF_2_LIST:
+    shelf_dim = SHELF_2_DIM
+  elif shelf in SHELF_3_LIST:
+    shelf_dim = SHELF_3_DIM
+  else:
+    shelf_dim = "UNKNOWN"
+
+  results = db_select_from_table_where('parcels', 'shelf_selected', shelf)
+
+  global html_header
+  html = html_header
+  html += '<body><h1>Shelf Overview</h1><a href="/">Back to start</a><br><a href="/shelves">Back to shelf overview</a><br>'
+  html += f'<h2>Shelf #{shelf}</h2>'
+  html += f'<table><tr><th>Width</th><td>{int(shelf_dim/10)} cm</td></tr>'
+  html += f'<tr><th>Height</th><td>{int(SHELF_HEIGHT/10)} cm</td></tr>'
+  html += f'<tr><th>Number of Parcels</th><td>{parcel_count}</td></tr>'
+  html += f'<tr></tr>'
+  html += f'<tr><th>List of Parcels</th></tr>'
+  html += f'<tr><th>Parcel ID</th><th>Name</th><th>Einheit</th><th>Dimensions</th><th>Weight</th><th>Shelf Proposed</th></tr>'
+  for row in results:
+    parcel_id       = row[0]
+    first_name      = row[1]
+    last_name       = row[2]
+    einheit_id      = row[3]
+    shelf_proposed  = row[4]
+    dim_1           = row[6]
+    dim_2           = row[7]
+    dim_3           = row[8]
+    weight          = row[9]
+    html += f'<tr><td>{parcel_id}</td><td>{first_name} {last_name}</td><td>{einheit_id}</td><td>{int(dim_1/10)}x{int(dim_2/10)}x{int(dim_3/10)} cm</td><td>{weight} g</td><td>{shelf_proposed}</td><td><a href="/search/{parcel_id}">Edit</a></td></tr>'
+  html += f''
+  html += f'</table>'
+
+  html += '</body>'
   return html
 
 def fix_parcels_missing_einheit():
