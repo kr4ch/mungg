@@ -21,6 +21,34 @@ REQ_SHELF_AREA      = 1/PARCEL_AREA_RESERVE # Shelf must be no more full than th
 
 SHELF_MAX = 5000 # Maximum number of shelves
 
+html_header = """<html>
+   <head>
+      <style>
+        th, td {
+          text-align: left;
+          padding: 8px;
+        }
+        th {
+          background-color: #D6EEEE;
+        }
+        td {
+          background-color: #ebffff;
+        }
+        * {
+        font-family: sans-serif;
+        }
+        .highlight-yellow {
+          background-color: #ffff00;
+        }
+        .highlight-red {
+          background-color: #ff0000;
+        }    
+        .highlight-green {
+          background-color: #33ff00;
+        }           
+      </style>
+   </head>"""
+
 ###############################################################################
 # Data Processing
 ###############################################################################
@@ -49,6 +77,67 @@ def get_parcel_area(dim_1, dim_2, dim_3):
   area = dim_1 * dim_2 * dim_3 / max_dim
   return area
 
+def get_shelves():
+  """
+  Returns a HTML overview of all shelves and the parcels in them
+  """
+  parcels_count_in_shelves_30 = db_count_entries_where_in_range('parcels', 'shelf_selected', min(SHELF_1_LIST), max(SHELF_1_LIST))
+  parcels_count_in_shelves_45 = db_count_entries_where_in_range('parcels', 'shelf_selected', min(SHELF_2_LIST), max(SHELF_2_LIST))
+  parcels_count_in_shelves_90 = db_count_entries_where_in_range('parcels', 'shelf_selected', min(SHELF_3_LIST), max(SHELF_3_LIST))
+
+  global html_header
+  html = html_header
+  html += '<body><h1>Shelf Overview</h1>'
+  html += f'<table><tr><th>Shelves 30cm</th><th>Shelves 45cm</th><th>Shelves 90cm</th></tr>'
+  html += f'<tr><th>{parcels_count_in_shelves_30} Parcels</th><th>{parcels_count_in_shelves_45} Parcels</th><th>{parcels_count_in_shelves_90} Parcels</th></tr>'
+  html += f'<tr><th>No. {min(SHELF_1_LIST)} - {max(SHELF_1_LIST)}</th><th>No. {min(SHELF_2_LIST)} - {max(SHELF_2_LIST)}</th><th>No. {min(SHELF_3_LIST)} - {max(SHELF_3_LIST)}</th></tr>'
+
+  html += f'<tr></tr>'
+  for i,j,k in zip(SHELF_1_LIST, SHELF_2_LIST, SHELF_3_LIST):
+    res_shelf_30 = db_select_from_table_where('parcels', 'shelf_selected', i)
+    shelf_area_used = 1 # Avoid div by zero
+    for row in res_shelf_30:
+      area_this_parcel = get_parcel_area(row[6], row[7], row[8])
+      shelf_area_used += area_this_parcel
+    usage_shelf_30 = shelf_area_used / (SHELF_1_DIM*SHELF_HEIGHT)
+    res_shelf_45 = db_select_from_table_where('parcels', 'shelf_selected', j)
+    shelf_area_used = 1 # Avoid div by zero
+    for row in res_shelf_45:
+      area_this_parcel = get_parcel_area(row[6], row[7], row[8])
+      shelf_area_used += area_this_parcel
+    usage_shelf_45 = shelf_area_used / (SHELF_2_DIM*SHELF_HEIGHT)
+    res_shelf_90 = db_select_from_table_where('parcels', 'shelf_selected', k)
+    shelf_area_used = 1 # Avoid div by zero
+    for row in res_shelf_90:
+      area_this_parcel = get_parcel_area(row[6], row[7], row[8])
+      shelf_area_used += area_this_parcel
+    usage_shelf_90 = shelf_area_used / (SHELF_3_DIM*SHELF_HEIGHT)
+
+    html += f'<tr><td '
+    if usage_shelf_30 < 0.01:
+      html += 'class="highlight-green"'
+    elif usage_shelf_30 > 0.01 and usage_shelf_30 < 0.5:
+      html += 'class="highlight-yellow"'
+    elif usage_shelf_30 > 0.5:
+      html += 'class="highlight-red"'
+    html += f'><a href="/shelf/{i}">#{i}</a><br>{db_count_entries_where("parcels", "shelf_selected", i)} Parcels<br>{int(100*usage_shelf_30)}% full</td><td '
+    if usage_shelf_45 < 0.01:
+      html += 'class="highlight-green"'
+    elif usage_shelf_45 > 0.01 and usage_shelf_45 < 0.5:
+      html += 'class="highlight-yellow"'
+    elif usage_shelf_45 > 0.5:
+      html += 'class="highlight-red"'
+    html += f'><a href="/shelf/{j}">#{j}</a><br>{db_count_entries_where("parcels", "shelf_selected", j)} Parcels<br>{int(100*usage_shelf_45)}% full</td><td '
+    if usage_shelf_90 < 0.01:
+      html += 'class="highlight-green"'
+    elif usage_shelf_90 > 0.01 and usage_shelf_90 < 0.5:
+      html += 'class="highlight-yellow"'
+    elif usage_shelf_90 > 0.5:
+      html += 'class="highlight-red"'
+    html += f'><a href="/shelf/{k}">#{k}</a><br>{db_count_entries_where("parcels", "shelf_selected", k)} Parcels<br>{int(100*usage_shelf_90)}% full</td></tr>'
+  html += '</table><br><br><a href="/">Back to start</a></body>'
+  return html
+
 def fix_parcels_missing_einheit():
   """
   Find all parcels that are missing einheit ID and allow editing them.
@@ -76,7 +165,6 @@ def fix_parcels_missing_einheit():
   parcel_table_html += '</table><br><br><a href="/">Back to start</a>'
 
   return parcel_table_html
-
 
 def assign_shelf_to_new_parcels():
   """

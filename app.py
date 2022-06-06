@@ -68,6 +68,11 @@ def get_parcels():
   
   return parcel_table_html
 
+# List all shelves
+@app.route('/shelves')
+def list_shelves():
+  html = get_shelves()  
+  return html
 
 # Initialize database (Deletes all existing records!)
 @app.route('/initdb')
