@@ -32,6 +32,12 @@ Install "Docker Desktop" and run it locally:
 docker pull krach/mungg
 git clone git@github.com:kr4ch/mungg.git
 cd mungg
+
+# IMPORTANT!! The following 2 lines are only needed when running on Ubuntu
+# Replace <YOURUSERNAME>
+sudo usermod -aG docker <YOURUSERNAME>
+sudo chmod 666 /var/run/docker.sock
+
 docker-compose -f docker-compose.test.yml up
 ```
-* Open "http://localhost:8000" in a browser
+* Open "http://localhost:8000/initdb" in a browser
