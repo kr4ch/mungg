@@ -297,12 +297,13 @@ def fix_einheit():
   html_string = fix_parcels_missing_einheit()
   return html_string
 
-@app.route('/assign')
-def assign_shelf():
-  global last_change
-  html_string, summary_string = assign_shelf_to_new_parcels()
-  last_change = summary_string
-  return html_string
+# DEPRECATED
+#@app.route('/assign')
+#def assign_shelf():
+#  global last_change
+#  html_string, summary_string = assign_shelf_to_new_parcels()
+#  last_change = summary_string
+#  return html_string
 
 @app.route('/assign_fillup')
 def assign_shelf_fillup():
@@ -474,10 +475,11 @@ def client_search_post():
   print(f'{results}')
 
   unsorted_parcels = 0
+  html = html_header
   if results == []:
-    html = f'Sorry, there are no parcels for einheit {einheit_id}'
+    html += f'Sorry, there are no parcels for einheit {einheit_id}'
   else:
-    html = f'The parcels for einheit {einheit_id} can be found in shelves:<br><br>'
+    html += f'The parcels for einheit {einheit_id} can be found in shelves:<br><br>'
     shelf_list = []
     for row in results:
       shelf_selected = row[5]

@@ -18,57 +18,58 @@
       </style>
    </head>
    <body>
-      <title>BULA Post Sortier App</title>
-      <h1>BULA Post Sortier App</h1>
-      Last change: <br>
+      <title>mova Parcel Squirrel</title>
+      <h1>mova Parcel Squirrel</h1>
+      Letzte Änderung an DB: <br>
       {{last_change}}
       <br><br>
-      <h4>Parcels</h4>
+      <h4>Pakete</h4>
       <table>
          <tr>
-            <th>Total in database</th>
+            <th>Total in DB</th>
             <th>{{no_parcels_total}}</th>
          </tr>
          <tr>
-            <td>to be assigned:</td>
+            <td>Noch kein Gestell zugewiesen:</td>
             <td>{{no_parcels_tobeassigned}}</td>
          </tr>
          <tr>
-            <td>to be sorted into shelf:</td>
+            <td>Noch nicht in Gestell einsortiert:</td>
             <td>{{no_parcels_tobesorted}}</td>
          </tr>
          <tr>
-            <td>ready to be collected:</td>
+            <td>Bereit zum abholen:</td>
             <td>{{no_parcels_sorted}}</td>
          </tr>
          <tr>
-            <td>already collected:</td>
+            <td>Bisher abgeholt:</td>
             <td>{{no_parcels_collected}}</td>
          </tr>
       </table>
       <br><br>
-      Interact with parcels:<br>
-      <a href="newparcel">Add new parcel</a><br>
-      <a href="search/990000000000000000">Search for parcel</a><br>
-      <a href="parcels">List all parcels</a><br>
-      <a href="shelves">List all shelves</a><br>
       <br>
-      Upload/Download:<br>
-      <a href="upload">Upload Excel file with parcels</a><br>
+      <h2>Pakete Ablauf</h2>
+      <a href="upload">1. Upload Excel von Post</a><br>
+      <a href="einheit">2. Fehlende Einheit reparieren</a><br>
+      <a href="assign_fillup">3. Gestell an neue Pakete zuweisen</a><br>
+      <a href="sort_search">4. Paket physisch in Gestell einsortieren</a><br>
+      <br>
+      <h2>Pakete Manuell</h2>
+      <a href="newparcel">Neues Paket hinzufügen</a><br>
+      <a href="search/990000000000000000">Paket suchen</a><br>
+      <a href="parcels">Liste alle Pakete</a><br>
+      <a href="shelves">Liste alle Gestelle (bitte ein paar Sekunden warten..)</a><br>
+      <br>
+      <h2>Backup</h2>>
+      <a href="upload">Upload Excel file with parcels TODO: Replace with second import </a><br>
       <a href="export">Export parcels to Excel download</a><br>
       <br>
-      Processing:<br>
-      <a href="einheit">1. Fix missing Einheit</a><br>
-      <a href="assign">2. Assign shelf to new parcels (dumb)</a><br>
-      <a href="assign_fillup">2. (Beta) Assign shelf to new parcels by filling up shelves by einheit</a><br>
-      <a href="sort_search">3. Sort parcel into shelf</a><br>
-      <br>
-      Client access:<br>
+      <h2>Client access</h2>>
       <a href="checkin">Check-In (search for parcels)</a><br>
       <a href="checkout">Check-Out parcels</a><br>
       <a href="clientlog">Log</a><br>
       <a href="statistics">Statistics</a><br>
       <br>
       <br>
-      Admin:<br>
+      <h2>Admin</h2>>
       <a href="initdb">!!RESET DATABASE!!</a><br>

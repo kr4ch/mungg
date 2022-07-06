@@ -11,7 +11,7 @@ SHELF_3_DIM     = 900 # mm
 SHELF_HEIGHT    = 300 # mm. Assumed to be the same for all 3 shelf types
 SHELF_UNSORTED  = 0     # Virtual shelf to indicate new parcels that have not yet been sorted
 SHELF_COLLECTED = 50000 # Virtual shelf to indicate parcels that have already been collected
-SHELF_1_LIST    = range(1,101)   # 1..100
+SHELF_1_LIST    = range(2,101)   # 1..100
 SHELF_2_LIST    = range(101,201) # 101..200
 SHELF_3_LIST    = range(201,301) # 201..300
 
@@ -211,86 +211,87 @@ def fix_parcels_missing_einheit():
 
   return parcel_table_html
 
-def assign_shelf_to_new_parcels():
-  """
-  Find all parcels that have not yet been assigned to a shelf (shelf_proposed) 
-  and assigns them.
-  """
-  assigned_count     = 0
-  assigned_parcel_id = []
-  assigned_shelf     = []
-  failed_count       = 0
-  failed_parcel_id   = []
-
-  SHELF_MAX = 5000 # Maximum number of shelves
-
-  # Find all parcels that have not been assigned to a shelf yet  
-  results = db_select_from_table_where('parcels', 'shelf_proposed', '0')
-
-  for row in results:
-    parcel_id_this  = row[0]
-    einheit_id_this = row[3]
-
-    # Determine which shelf this parcel should go on
-    results_einheit = db_select_from_table_where('parcels', 'einheit_id', f'{einheit_id_this}')
-    print(f"DBG: results_einheit={results_einheit}")
-
-    parcel_needs_shelf = True
-    
-    # Find if there are other parcels for the same einheit_id that have already a shelf_proposed
-    if not(results_einheit[0][0] == str(parcel_id_this) and len(results_einheit) == 1):
-      # There are already parcels for this einheit_id, check them all out
-      for row_einheit in results_einheit:
-        parcel_id_einheit      = row_einheit[0]
-        shelf_proposed_einheit = row_einheit[4]
-        # TODO: Check if there is enough space in this shelf
-        ## Get width of this shelf
-        ## Test if new parcel can fit
-
-        if parcel_id_einheit != parcel_id_this and shelf_proposed_einheit != 0 and shelf_proposed_einheit < SHELF_MAX and parcel_needs_shelf:
-            shelf_proposed = row_einheit[4]
-            print(f'Parcel {parcel_id_this} has already parcels for einheit {einheit_id_this} in shelf {shelf_proposed}')
-            parcel_needs_shelf = False
-
-    # This is the only parcel for this einheit_id
-    if parcel_needs_shelf:
-      # Put it into the next empty shelf
-      # TODO: Determine which shelf fits for this parcel size / weight
-
-      # Iterate through all shelves starting at 0 to find the first empty one
-      # TODO: Inefficient!
-      shelf_proposed = 1
-      while (db_test_if_value_exists_in_column_in_table('parcels', 'shelf_proposed', f'{shelf_proposed}')):
-        shelf_proposed += 1
-      print(f'Parcel {parcel_id_this} is the first for einheit {einheit_id_this} and was assigned to shelf {shelf_proposed}')
-
-    if shelf_proposed == 0:
-      print(f"ERROR: Unable to assign shelf to {parcel_id_this}")
-      failed_count += 1
-      failed_parcel_id.append(parcel_id_this)
-    else:
-      # Update this single record
-      ret = db_update_column_for_record_where_column_has_value('parcels', 'shelf_proposed', shelf_proposed, 'parcel_id', parcel_id_this)
-      if not ret:
-        print(f"ERROR: Unable to change shelf_proposed for parcel_id {parcel_id_this}")
-
-      assigned_count = assigned_count + 1
-      assigned_parcel_id.append(str(parcel_id_this))
-      assigned_shelf.append(str(shelf_proposed))
-  
-  # Generate overview of which shelfs have been assigned
-  html_string = f'Assigned shelf to {assigned_count} parcels:<br><br>'
-  for i in range(assigned_count):
-    html_string += f'ID: {assigned_parcel_id[i]}: Shelf {assigned_shelf[i]}<br>'
-  if failed_count > 0:
-    html_string += f'<br><b>FAILED</b> to assign shelf to {failed_count} parcels:' + '<br>'.join(failed_parcel_id)
-  html_string += '<br><br><a href="/">Back to start</a>'
-
-  summary_string = f"Assigned {assigned_count} parcels to a shelf."
-  if failed_count > 0:
-    summary_string += f"<br>ERROR {failed_count} failed to assign!"
-
-  return html_string, summary_string
+# DEPRECATED
+#def assign_shelf_to_new_parcels():
+#  """
+#  Find all parcels that have not yet been assigned to a shelf (shelf_proposed) 
+#  and assigns them.
+#  """
+#  assigned_count     = 0
+#  assigned_parcel_id = []
+#  assigned_shelf     = []
+#  failed_count       = 0
+#  failed_parcel_id   = []
+#
+#  SHELF_MAX = 5000 # Maximum number of shelves
+#
+#  # Find all parcels that have not been assigned to a shelf yet  
+#  results = db_select_from_table_where('parcels', 'shelf_proposed', '0')
+#
+#  for row in results:
+#    parcel_id_this  = row[0]
+#    einheit_id_this = row[3]
+#
+#    # Determine which shelf this parcel should go on
+#    results_einheit = db_select_from_table_where('parcels', 'einheit_id', f'{einheit_id_this}')
+#    print(f"DBG: results_einheit={results_einheit}")
+#
+#    parcel_needs_shelf = True
+#    
+#    # Find if there are other parcels for the same einheit_id that have already a shelf_proposed
+#    if not(results_einheit[0][0] == str(parcel_id_this) and len(results_einheit) == 1):
+#      # There are already parcels for this einheit_id, check them all out
+#      for row_einheit in results_einheit:
+#        parcel_id_einheit      = row_einheit[0]
+#        shelf_proposed_einheit = row_einheit[4]
+#        # TODO: Check if there is enough space in this shelf
+#        ## Get width of this shelf
+#        ## Test if new parcel can fit
+#
+#        if parcel_id_einheit != parcel_id_this and shelf_proposed_einheit != 0 and shelf_proposed_einheit < SHELF_MAX and parcel_needs_shelf:
+#            shelf_proposed = row_einheit[4]
+#            print(f'Parcel {parcel_id_this} has already parcels for einheit {einheit_id_this} in shelf {shelf_proposed}')
+#            parcel_needs_shelf = False
+#
+#    # This is the only parcel for this einheit_id
+#    if parcel_needs_shelf:
+#      # Put it into the next empty shelf
+#      # TODO: Determine which shelf fits for this parcel size / weight
+#
+#      # Iterate through all shelves starting at 0 to find the first empty one
+#      # TODO: Inefficient!
+#      shelf_proposed = 1
+#      while (db_test_if_value_exists_in_column_in_table('parcels', 'shelf_proposed', f'{shelf_proposed}')):
+#        shelf_proposed += 1
+#      print(f'Parcel {parcel_id_this} is the first for einheit {einheit_id_this} and was assigned to shelf {shelf_proposed}')
+#
+#    if shelf_proposed == 0:
+#      print(f"ERROR: Unable to assign shelf to {parcel_id_this}")
+#      failed_count += 1
+#      failed_parcel_id.append(parcel_id_this)
+#    else:
+#      # Update this single record
+#      ret = db_update_column_for_record_where_column_has_value('parcels', 'shelf_proposed', shelf_proposed, 'parcel_id', parcel_id_this)
+#      if not ret:
+#        print(f"ERROR: Unable to change shelf_proposed for parcel_id {parcel_id_this}")
+#
+#      assigned_count = assigned_count + 1
+#      assigned_parcel_id.append(str(parcel_id_this))
+#      assigned_shelf.append(str(shelf_proposed))
+#  
+#  # Generate overview of which shelfs have been assigned
+#  html_string = f'Assigned shelf to {assigned_count} parcels:<br><br>'
+#  for i in range(assigned_count):
+#    html_string += f'ID: {assigned_parcel_id[i]}: Shelf {assigned_shelf[i]}<br>'
+#  if failed_count > 0:
+#    html_string += f'<br><b>FAILED</b> to assign shelf to {failed_count} parcels:' + '<br>'.join(failed_parcel_id)
+#  html_string += '<br><br><a href="/">Back to start</a>'
+#
+#  summary_string = f"Assigned {assigned_count} parcels to a shelf."
+#  if failed_count > 0:
+#    summary_string += f"<br>ERROR {failed_count} failed to assign!"
+#
+#  return html_string, summary_string
 
 def assign_shelf_to_new_parcels_fillup():
   """
@@ -329,7 +330,25 @@ def assign_shelf_to_new_parcels_fillup():
     # Get all unassigned parcels for this einheit
     subresults = db_select_from_table_where_and('parcels', 'shelf_proposed', '0', 'einheit_id', einheit_id)
     print(subresults)
-    
+
+    # Special case: all parcels for einheit "rover" go into a special shelf
+    EINHEIT_ROVER = 'rover'
+    SHELF_ROVER   = 1
+    if str(einheit_id) == EINHEIT_ROVER:
+      for row in subresults:
+        parcel_id = row[0]
+        print(f"Sorting parcel {parcel_id} for einheit {einheit_id} into shelf {SHELF_ROVER}")
+        # Update the parcels shelf_proposed and add them to assigned_count, assigned_parcel_id, assigned_shelf
+        ret = db_update_column_for_record_where_column_has_value('parcels', 'shelf_proposed', SHELF_ROVER, 'parcel_id', parcel_id)
+        if not ret:
+          print(f"ERROR: Unable to change shelf_proposed for parcel_id {parcel_id}")
+        else:
+          assigned_count = assigned_count + 1
+          assigned_parcel_id.append(str(parcel_id))
+          assigned_shelf.append(str(SHELF_ROVER))
+      break # Sorted all parcels for einheit "rover"
+
+  
     # General Idea:
     ## 1. Ignore the highest dimension for every parcel (long parcels will stick out of a shelf)
     ## 2. Calculate the area for every parcel of einheit
@@ -514,7 +533,7 @@ def import_parcels_to_db(parcel_dict):
     else: print(f"WARNING: Unknown column in table: {key}")
   
   if not all(required_keys):
-    return "<h1>ERROR: Missing column in Excel sheet!<h1>"
+    return "<h1>ERROR: Missing column in Excel sheet!<h1>", ""
 
   print(parcel_dict)
 
@@ -534,7 +553,7 @@ def import_parcels_to_db(parcel_dict):
     
     # Test if data is valid. Eg. if parcel_id is correct format
     ret = test_parcel_id_valid(parcel_id)
-    if ret: return ret
+    if ret: return ret, ""
 
     # Test if parcel_id already exists, we dont want any duplicates
     mydb = mysql.connector.connect(
@@ -546,7 +565,7 @@ def import_parcels_to_db(parcel_dict):
     cursor = mydb.cursor()
 
     if not checkTableExists(mydb, "parcels"):
-        return f'ERROR: table "parcels" does not exist!'
+        return f'ERROR: table "parcels" does not exist!', ""
 
     sql_cmd = f"SELECT * FROM parcels WHERE parcel_id = '{parcel_id}'"
     print(sql_cmd)
