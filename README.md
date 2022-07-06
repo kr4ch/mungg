@@ -41,3 +41,9 @@ sudo chmod 666 /var/run/docker.sock
 docker-compose -f docker-compose.test.yml up
 ```
 * Open "http://localhost:8000/initdb" in a browser
+
+# Testing CHANGES to the files locally
+Use this command to update the docker container after some changes to a .py or .html file:
+```
+docker-compose -f docker-compose.test.yml up --build
+```
