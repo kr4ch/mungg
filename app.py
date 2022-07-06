@@ -454,7 +454,7 @@ def checkin_post():
 
   checkin_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
-  db_insert_into_table('client_log', ['client_id', 'checkin_time'], [f'{client_id}', f'"{checkin_time}"'])
+  db_insert_into_table('client_log', ['client_id', 'checkin_time'], [f'"{client_id}"', f'"{checkin_time}"'])
 
   return redirect(url_for('client_search'))
   
@@ -553,7 +553,7 @@ def checkout_parcel_post(client_id):
 
   # Insert entry into client log to indicate parcel was checked out
   checkout_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-  db_insert_into_table('client_log', ['client_id', 'checkout_time', 'parcel_id'], [f'{client_id}', f'"{checkout_time}"', f'"{parcel_id}"'])
+  db_insert_into_table('client_log', ['client_id', 'checkout_time', 'parcel_id'], [f'"{client_id}"', f'"{checkout_time}"', f'"{parcel_id}"'])
 
   # Depending on the users intention either check out another parcel or return to start
   if request.form['action'] == 'Next':
